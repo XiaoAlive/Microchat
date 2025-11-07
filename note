@@ -1,0 +1,14 @@
+#1.依赖：
+Retrofit：帮你轻松从网上获取数据（比如从服务器拿信息）
+
+converter-gson：自动把服务器返回的复杂数据转成你能直接用的格式
+
+RxJava/RxAndroid：帮你处理那些需要等一会儿才能完成的操作（比如加载网络数据），还能确保最后在正确的地方更新界面，不会卡
+
+#2.关于drawable目录命名的问题分析
+Android 对资源目录的命名有严格规则，drawable 目录的自定义子目录通常需要遵循 “drawable - 限定符” 格式（如 drawable-hdpi、drawable-land 等，限定符是系统预定义的，如分辨率、屏幕方向等）。而 vimg 不是 Android 认可的限定符，即使在 sourceSets 中配置，也可能因命名不规范导致识别失败。
+
+创建其他drawable目录的方法：右键res目录，选择新建Android Resource File，如图所示：
+![img.png](img.png)
+然后再选择density来自己决定创建什么样的density，如图所示：
+![img_1.png](img_1.png)
