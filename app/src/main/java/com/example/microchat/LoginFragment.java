@@ -11,6 +11,8 @@ import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -120,6 +122,22 @@ public class LoginFragment extends Fragment {
                     layoutContext.setVisibility(View.VISIBLE);
                     layoutHistory.setVisibility(View.INVISIBLE);
                 }
+            }
+        });
+
+        //响应登录按钮的点击事件
+        View buttonLogin = v.findViewById(R.id.buttonLogin);
+        buttonLogin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                MainFragment fragment = new MainFragment();
+                //替换掉FrameLayout中现有的Fragment
+                fragmentTransaction.replace(R.id.fragment_container, fragment);
+                //将这次切换放入后退栈中，这样可以在点后退键时自动返回上一个页面
+                fragmentTransaction.addToBackStack("login");
+                fragmentTransaction.commit();
             }
         });
 

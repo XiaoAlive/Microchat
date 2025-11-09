@@ -1,0 +1,91 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:app="http://schemas.android.com/apk/res-auto"
+             xmlns:tools="http://schemas.android.com/tools"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             android:orientation="vertical"
+             tools:context="com.example.microchat.MainFragment">
+
+    <LinearLayout
+            android:id="@+id/contentLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/white"
+            android:orientation="vertical">
+
+        <!--导航栏-->
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:background="@drawable/nav_bar_bk"
+                android:gravity="center_vertical"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp">
+
+            <ImageView
+                    android:id="@+id/headImage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:srcCompat="?android:attr/textSelectHandle" />
+
+            <TextView
+                    android:id="@+id/textView3"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:text="标题"
+                    android:textSize="18sp" />
+
+            <TextView
+                    android:id="@+id/textViewPopMenu"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="+"
+                    android:textSize="36sp" />
+        </LinearLayout>
+
+        <!--Tab控件-->
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/refreshLayout"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+            <!--主内容区-->
+            <com.example.microchat.QQViewPager
+                    android:id="@+id/viewPager"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"/>
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+        <com.google.android.material.tabs.TabLayout
+                android:id="@+id/tabLayout"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="@drawable/tab_bar_bk_selector"
+                android:paddingBottom="2dp"
+                android:paddingTop="2dp"
+                app:tabIndicatorColor="@android:color/transparent"
+                app:tabSelectedTextColor="@android:color/holo_blue_light"
+                app:tabTextAppearance="@style/TabTitleAppearance"
+                app:tabTextColor="@android:color/black">
+
+            <com.google.android.material.tabs.TabItem
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:icon="@drawable/message_normal"
+                    android:text="消息" />
+
+            <com.google.android.material.tabs.TabItem
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:icon="@drawable/contacts_normal"
+                    android:text="联系人" />
+
+            <com.google.android.material.tabs.TabItem
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:icon="@drawable/space_normal"
+                    android:text="动态" />
+        </com.google.android.material.tabs.TabLayout>
+    </LinearLayout>
+</FrameLayout>
