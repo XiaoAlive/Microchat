@@ -8,11 +8,14 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <!-- 主色调 -->
-    <color name="colorPrimary">#1976D2</color>
+    <color name="colorPrimary">#3F51B5</color>
 
     <!-- 主色调深色版 -->
-    <color name="colorPrimaryDark">#2196F3</color>
+    <color name="colorPrimaryDark">#303F9F</color>
 
     <!-- 强调色 -->
-    <color name="colorAccent">#03A9F4</color>
+    <color name="colorAccent">#ff4081</color>
+
+    <!-- 信息背景 -->
+    <color name="chat_background">#e1e5e9</color>
 </resources>
