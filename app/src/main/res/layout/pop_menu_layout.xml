@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              xmlns:tools="http://schemas.android.com/tools"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:orientation="vertical">
+
+    <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+        <ImageView
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="20dp"
+                app:srcCompat="@mipmap/ic_launcher_round" />
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="创建群聊" />
+    </LinearLayout>
+
+    <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+        <ImageView
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="20dp"
+                app:srcCompat="@mipmap/ic_launcher_round" />
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="加好友/群" />
+
+    </LinearLayout>
+
+    <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+        <ImageView
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="20dp"
+                app:srcCompat="@mipmap/ic_launcher_round" />
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="扫一扫" />
+
+    </LinearLayout>
+
+    <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+        <ImageView
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="20dp"
+                app:srcCompat="@mipmap/ic_launcher_round" />
+
+        <TextView
+                android:id="@+id/textView6"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="面对面快传" />
+
+    </LinearLayout>
+
+    <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+        <ImageView
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="20dp"
+                app:srcCompat="@mipmap/ic_launcher_round" />
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="付款" />
+
+    </LinearLayout>
+</LinearLayout>

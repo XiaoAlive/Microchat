@@ -14,4 +14,10 @@
         <item name="android:textAllCaps">false</item>
         <!-- 注意这两个属性一定要写，缺一不可，否则显示不出图片！ -->
     </style>
+
+    <!-- 2025年11月10日16:01:26 -->
+    <style name="popoMenuAnim" parent="android:Animation">
+        <!--<item name="android:windowEnterAnimation">@anim/popo_menu_show</item>-->
+        <item name="android:windowExitAnimation">@anim/popo_menu_hide</item>
+    </style>
 </resources>
