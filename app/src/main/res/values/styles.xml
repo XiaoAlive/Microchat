@@ -20,4 +20,8 @@
         <!--<item name="android:windowEnterAnimation">@anim/popo_menu_show</item>-->
         <item name="android:windowExitAnimation">@anim/popo_menu_hide</item>
     </style>
+
+    <!-- 2025年11月14日17:13:00 -->
+    <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+    <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 </resources>

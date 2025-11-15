@@ -1,5 +1,6 @@
 package com.example.microchat.adapter;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,7 +10,9 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.microchat.ChatActivity;
 import com.example.microchat.R;
+import com.example.microchat.model.ListTree;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -150,6 +153,8 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
 
     private List<TreeNode> mVisibleNodes = new ArrayList<>();
     private List<TreeNode> mAllNodes = new ArrayList<>();
+    private boolean showSearchBox = false;
+    private OnSearchClickListener searchClickListener;
 
     public ContactsPageListAdapter() {
     }
@@ -235,22 +240,52 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
     //获取可见节点数
     @Override
     public int getItemCount() {
-        return mVisibleNodes.size();
+        return showSearchBox ? mVisibleNodes.size() + 1 : mVisibleNodes.size();
     }
 
     //获取节点类型（布局ID）
+    //设置是否显示搜索框
+    public void setShowSearchBox(boolean showSearchBox) {
+        if (this.showSearchBox != showSearchBox) {
+            this.showSearchBox = showSearchBox;
+            notifyDataSetChanged();
+        }
+    }
+
+    //设置搜索框点击监听器
+    public void setOnSearchClickListener(OnSearchClickListener listener) {
+        this.searchClickListener = listener;
+    }
+
+    //搜索框点击监听器接口
+    public interface OnSearchClickListener {
+        void onSearchClick();
+    }
+
     @Override
     public int getItemViewType(int position) {
-        return mVisibleNodes.get(position).getLayoutId();
+        // 如果显示搜索框且是第一个位置，返回搜索框布局
+        if (showSearchBox && position == 0) {
+            return R.layout.common_search_view;
+        }
+        // 否则返回对应节点的布局ID
+        int nodePosition = showSearchBox ? position - 1 : position;
+        return mVisibleNodes.get(nodePosition).getLayoutId();
     }
 
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
-        if (viewType == R.layout.contacts_group_item) {
+        if (viewType == R.layout.common_search_view) {
+            // 搜索框视图
+            View view = inflater.inflate(viewType, parent, false);
+            return new SearchViewHolder(view);
+        } else if (viewType == R.layout.contacts_group_item) {
+            // 组节点视图
             View view = inflater.inflate(viewType, parent, false);
             return new GroupViewHolder(view);
         } else if (viewType == R.layout.contacts_contact_item) {
+            // 联系人节点视图
             View view = inflater.inflate(viewType, parent, false);
             return new ContactViewHolder(view);
         }
@@ -259,7 +294,23 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
 
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-        TreeNode node = mVisibleNodes.get(position);
+        // 处理搜索框
+        if (holder instanceof SearchViewHolder) {
+            SearchViewHolder searchHolder = (SearchViewHolder) holder;
+            searchHolder.searchView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (searchClickListener != null) {
+                        searchClickListener.onSearchClick();
+                    }
+                }
+            });
+            return;
+        }
+        
+        // 处理普通节点
+        int nodePosition = showSearchBox ? position - 1 : position;
+        TreeNode node = mVisibleNodes.get(nodePosition);
         
         //设置缩进
         View itemView = holder.itemView;
@@ -338,11 +389,44 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
         TextView textViewTitle;    //显示好友名字的控件
         TextView textViewDetail;   //显示好友状态的控件
 
-        public ContactViewHolder(View itemView) {
+        public ContactViewHolder(final View itemView) {
             super(itemView);
             imageViewHead = itemView.findViewById(R.id.imageViewHead);
             textViewTitle = itemView.findViewById(R.id.textViewTitle);
             textViewDetail = itemView.findViewById(R.id.textViewDetail);
+
+            //当点击这一行时，开始聊天
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    //进入聊天页面
+                    Intent intent = new Intent(itemView.getContext(), ChatActivity.class);
+                    
+                    //获取当前位置，考虑搜索框的偏移
+                    int position = getAdapterPosition();
+                    int nodePosition = showSearchBox ? position - 1 : position;
+                    
+                    //从可见节点列表中获取对应的联系人节点
+                    TreeNode node = mVisibleNodes.get(nodePosition);
+                    if (node instanceof ContactNode) {
+                        ContactNode contactNode = (ContactNode) node;
+                        ContactInfo info = contactNode.getContactInfo();
+                        //将对方的名字作为参数传过去
+                        intent.putExtra("contact_name", info.getName());
+                        itemView.getContext().startActivity(intent);
+                    }
+                }
+            });
+        }
+    }
+    
+    //搜索框ViewHolder
+    class SearchViewHolder extends RecyclerView.ViewHolder {
+        View searchView;
+        
+        public SearchViewHolder(View itemView) {
+            super(itemView);
+            searchView = itemView.findViewById(R.id.common_search_view);
         }
     }
 }

@@ -14,10 +14,13 @@
             android:background="@android:color/background_light"
             android:fitsSystemWindows="false">
 
+        <!-- 搜索框 - 添加到顶部 -->
         <include
-                layout="@layout/message_list_item_search"
+                layout="@layout/common_search_view"
+                android:id="@+id/searchViewStub"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginVertical="8dp"
                 app:layout_scrollFlags="scroll" />
 
         <LinearLayout

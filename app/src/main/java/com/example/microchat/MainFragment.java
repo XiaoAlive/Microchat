@@ -1,11 +1,13 @@
 package com.example.microchat;
 // 2025年11月9日
+import com.example.microchat.model.ListTree;
 import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.content.res.Resources;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -36,6 +38,9 @@ import com.google.android.material.tabs.TabLayout;
  */
 public class MainFragment extends Fragment {
 
+    // 静态的ListTree对象，用于在Activity间共享联系人数据
+    private static ListTree tree = new ListTree();
+
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
@@ -53,6 +58,14 @@ public class MainFragment extends Fragment {
 
     public MainFragment() {
         // Required empty public constructor
+    }
+
+    /**
+     * 获取静态的联系人树对象，用于在Activity间共享联系人数据
+     * @return ListTree对象
+     */
+    public static ListTree getContactsTree() {
+        return tree;
     }
 
     /**
@@ -441,6 +454,18 @@ public class MainFragment extends Fragment {
         //创建View
         View v = getLayoutInflater().inflate(R.layout.contacts_page_layout,null);
         
+        // 为顶部搜索框设置点击事件
+        View topSearchView = v.findViewById(R.id.searchViewStub);
+        if (topSearchView != null) {
+            topSearchView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent intent = new Intent(getContext(), SearchActivity.class);
+                    startActivity(intent);
+                }
+            });
+        }
+        
         //创建适配器
         ContactsPageListAdapter adapter = new ContactsPageListAdapter();
         
@@ -478,8 +503,19 @@ public class MainFragment extends Fragment {
         //获取页面里的RecyclerView，为它设置Adapter
         RecyclerView recyclerView = v.findViewById(R.id.contactListView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        
+        // 设置Adapter，禁用底部搜索框，因为我们使用顶部的搜索框
+        adapter.setShowSearchBox(false);
+        
         recyclerView.setAdapter(adapter);
-
+        
+        // 将联系人数据添加到静态tree对象中，用于搜索功能
+        // 先清空tree
+        tree.clear();
+        
+        // 直接将适配器中已创建的GroupNode添加到tree作为根节点
+        tree.addRootNode(groupNode2); // 这是"我的好友"组
+        
         return v;
     }
 
