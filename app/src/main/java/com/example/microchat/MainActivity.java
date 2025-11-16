@@ -4,9 +4,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
+import com.example.microchat.adapter.ContactsPageListAdapter;
 import retrofit2.Retrofit;
 
 public class MainActivity extends AppCompatActivity implements FragmentListener{
+    public static ContactsPageListAdapter.ContactInfo myInfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

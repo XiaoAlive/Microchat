@@ -14,6 +14,7 @@ import com.example.microchat.ChatActivity;
 import com.example.microchat.R;
 import com.example.microchat.model.ListTree;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -127,19 +128,25 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
     }
 
     //联系人数据
-    public static class ContactInfo {
-        private Bitmap avatar; //头像
+    //实现Serializable接口是为了在Activity间传递
+    public static class ContactInfo implements Serializable {
+        //头像在服务器的路径
+        private int id;
         private String name; //名字
         private String status; //状态
 
-        public ContactInfo(Bitmap avatar, String name, String status) {
-            this.avatar = avatar;
+        public ContactInfo(int id, String name, String status) {
+            this.id = id;
             this.name = name;
             this.status = status;
         }
 
-        public Bitmap getAvatar() {
-            return avatar;
+        public int getId() {
+            return this.id;
+        }
+
+        public String getAvatarUrl() {
+            return "/image/head/" + id + ".png";
         }
 
         public String getName() {
@@ -355,11 +362,9 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
             ContactViewHolder contactHolder = (ContactViewHolder) holder;
             
             ContactInfo info = contactNode.getContactInfo();
-            if (info.getAvatar() != null) {
-                contactHolder.imageViewHead.setImageBitmap(info.getAvatar());
-            } else {
-                contactHolder.imageViewHead.setImageResource(R.drawable.ic_launcher_background); //默认头像
-            }
+            // 由于头像现在是一个URL路径，我们暂时使用默认头像
+            // 在实际应用中，这里应该使用图片加载库（如Glide或Picasso）根据URL加载图片
+            contactHolder.imageViewHead.setImageResource(R.drawable.contacts_normal); //使用默认头像
             contactHolder.textViewTitle.setText(info.getName());
             contactHolder.textViewDetail.setText(info.getStatus());
         }

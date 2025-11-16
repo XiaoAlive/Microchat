@@ -485,16 +485,12 @@ public class MainFragment extends Fragment {
         ContactsPageListAdapter.GroupNode groupNode5 = adapter.addGroupNode(group5);
 
         //第二层，联系人信息
-        //头像
-        Bitmap bitmap= BitmapFactory.decodeResource(getResources(), R.drawable.contacts_normal);
-        //联系人1
+        //联系人1 - 使用id代替bitmap
         ContactsPageListAdapter.ContactInfo contact1 = new ContactsPageListAdapter.ContactInfo(
-                bitmap,"王二","[在线]我是王二");
-        //头像
-        bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.contacts_normal);
-        //联系人2
-        ContactsPageListAdapter.ContactInfo contact2=new ContactsPageListAdapter.ContactInfo(
-                bitmap,"王三","[离线]我没有状态");
+                1, "王二", "[在线]我是王二");
+        //联系人2 - 使用id代替bitmap
+        ContactsPageListAdapter.ContactInfo contact2 = new ContactsPageListAdapter.ContactInfo(
+                2, "王三", "[离线]我没有状态");
         
         //添加联系人到指定组
         adapter.addContactToGroup(groupNode2, contact1);

@@ -44,7 +44,8 @@ public class SearchActivity extends AppCompatActivity {
         public void onBindViewHolder(MyViewHolder holder, int position) {
             //获取联系人信息，设置到对应的控件中
             MyContactInfo info = searchResultList.get(position);
-            holder.imageViewHead.setImageBitmap(info.info.getAvatar());
+            // 由于ContactInfo类已修改，不再有getAvatar()方法，使用默认头像
+            holder.imageViewHead.setImageResource(R.drawable.contacts_normal);
             holder.textViewName.setText(info.info.getName());
             String groupName =info.groupName;
             holder.textViewDetail.setText("来自分组 "+groupName);

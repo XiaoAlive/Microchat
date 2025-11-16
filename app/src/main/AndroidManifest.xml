@@ -3,6 +3,10 @@
           package="com.example.microchat">
 
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 权限申请 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
             android:allowBackup="true"
@@ -11,6 +15,18 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:theme="@style/AppTheme">
+
+        <!-- FileProvider安全文件共享 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.microchat.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+        <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+    </provider>
+
         <activity android:name=".ChatActivity">
         </activity>
         <activity android:name=".SearchActivity">
