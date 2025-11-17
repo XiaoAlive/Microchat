@@ -43,7 +43,9 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class RegisterActivity extends AppCompatActivity {
     private Retrofit retrofit;
@@ -130,14 +132,18 @@ public class RegisterActivity extends AppCompatActivity {
 
     public void doRegister() {
         ChatService chatService = retrofit.create(ChatService.class);
-        //产生文件Part和文本Part
-        MultipartBody.Part filePart = createFilePart();
         TextView tvName = findViewById(R.id.editTextName);
         TextView tvPassword = findViewById(R.id.editTextPassword);
         String name = tvName.getText().toString();
         String password = tvPassword.getText().toString();
-        Observable<ServerResult<ContactsPageListAdapter.ContactInfo>> observable =
-                chatService.requestRegister(filePart,name,password);
+        
+        // 创建请求参数Map
+        Map<String, String> userMap = new HashMap<>();
+        userMap.put("username", name);
+        userMap.put("password", password);
+        
+        Observable<ServerResult<ContactsPageListAdapter.ContactInfo>> observable = 
+                chatService.requestRegister(userMap);
 
         observable.map(result -> {
             //判断服务端是否正确返回
@@ -186,7 +192,7 @@ public class RegisterActivity extends AppCompatActivity {
 
     public void getRetrofit() {
         if(retrofit==null){
-            //从本地读取server host name，
+            //从本地读取server host name，如果MainActivity中已有设置则优先使用
             SharedPreferences preferences=getApplicationContext().getSharedPreferences("qqapp", MODE_PRIVATE);
             String serverHost = preferences.getString("server_addr", "");
             if (serverHost.isEmpty()){
