@@ -8,6 +8,7 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -18,9 +19,13 @@ import android.text.Spanned;
 import android.text.style.ImageSpan;
 import android.widget.*;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.graphics.Color;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager.widget.PagerAdapter;
@@ -28,7 +33,23 @@ import androidx.viewpager.widget.ViewPager;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.example.microchat.adapter.ContactsPageListAdapter;
 import com.example.microchat.adapter.MessagePageListAdapter;
+import com.example.microchat.service.ChatService;
 import com.google.android.material.tabs.TabLayout;
+import com.bumptech.glide.Glide;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import androidx.appcompat.app.AlertDialog;
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
+import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
+import retrofit2.converter.gson.GsonConverterFactory;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
+import android.util.Log;
 
 
 /**
@@ -55,6 +76,26 @@ public class MainFragment extends Fragment {
     private TabLayout tabLayout;
     private ViewGroup rootView;
     private SwipeRefreshLayout swipeRefreshLayout; // 添加下拉刷新组件引用
+    
+    // 组节点成员变量，用于访问联系人组
+    private ContactsPageListAdapter.GroupNode groupNode1;
+    private ContactsPageListAdapter.GroupNode groupNode2;
+    private ContactsPageListAdapter.GroupNode groupNode3;
+    private ContactsPageListAdapter.GroupNode groupNode4;
+    private ContactsPageListAdapter.GroupNode groupNode5;
+    
+    // 适配器和recyclerView引用
+    private ContactsPageListAdapter contactsAdapter;
+    private RecyclerView contactsRecyclerView;
+    private final List<ContactsPageListAdapter.ContactInfo> cachedContacts = new ArrayList<>();
+    private int currentContactsTab = 0;
+    
+    // Retrofit相关变量
+    private Retrofit retrofit;
+    private ChatService chatService;
+    
+    // 定时器订阅
+    private Disposable observableDisposable; //用于停止订阅的对象
 
     public MainFragment() {
         // Required empty public constructor
@@ -93,6 +134,121 @@ public class MainFragment extends Fragment {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+        
+        // 初始化Retrofit
+        initRetrofit();
+    }
+    
+    @Override
+    public void onStart() {
+        super.onStart();
+        
+        // 创建一个定时器Observable
+        Observable intervalObservable = Observable.interval(10, TimeUnit.SECONDS);
+        intervalObservable.retry().flatMap(v -> {
+            // 向服务端发出获取联系人列表的请求
+            return chatService.getContacts().map(result -> {
+                // 转换服务端返回的数据，将真正的负载发给观察者
+                if (result != null && result.getRetCode() == 0) {
+                    return result.getData();
+                } else {
+                    throw new RuntimeException(result != null ? result.getErrMsg() : "未知错误");
+                }
+            });
+        }).retry().subscribeOn(Schedulers.computation())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Observer<List<ContactsPageListAdapter.ContactInfo>>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        observableDisposable = d;
+                    }
+
+                    @Override
+                    public void onNext(List<ContactsPageListAdapter.ContactInfo> contactInfos) {
+                        // 更新联系人列表
+                        updateContactsList(contactInfos);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        // 提示错误信息
+                        String errmsg = e.getLocalizedMessage();
+                        if (getContext() != null) {
+                            Toast.makeText(getContext(), "获取联系人失败：" + errmsg, Toast.LENGTH_SHORT).show();
+                        }
+                        Log.e("qqapp1", "获取联系人错误：" + errmsg, e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Log.i("qqapp1", "get contacts completed!");
+                    }
+                });
+    }
+    
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // 停止RxJava定时器
+        if (observableDisposable != null && !observableDisposable.isDisposed()) {
+            observableDisposable.dispose();
+            observableDisposable = null;
+        }
+    }
+    
+    // 初始化Retrofit
+    private void initRetrofit() {
+        // 从SharedPreferences获取服务器地址
+        String serverAddress = getActivity().getSharedPreferences("app_config", 0)
+                .getString("server_addr", "http://10.0.2.2:8081");
+        
+        retrofit = new Retrofit.Builder()
+                .baseUrl(serverAddress)
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .build();
+        
+        chatService = retrofit.create(ChatService.class);
+    }
+    
+    // 更新联系人列表
+    private void updateContactsList(List<ContactsPageListAdapter.ContactInfo> contacts) {
+        cachedContacts.clear();
+        if (contacts != null) {
+            cachedContacts.addAll(contacts);
+        }
+        rebuildContactsTree();
+        
+        if (contactsRecyclerView == null) {
+            return;
+        }
+        
+        if (currentContactsTab == 0) {
+            showGroupView();
+        } else if (currentContactsTab == 1) {
+            showFriendsView();
+        }
+    }
+    
+    private void rebuildContactsTree() {
+        if (tree == null) {
+            return;
+        }
+        tree.clear();
+        if (cachedContacts.isEmpty()) {
+            return;
+        }
+        ContactsPageListAdapter.GroupInfo groupInfo =
+                new ContactsPageListAdapter.GroupInfo("我的好友", cachedContacts.size());
+        ContactsPageListAdapter.GroupNode root =
+                new ContactsPageListAdapter.GroupNode(groupInfo, 0);
+        for (ContactsPageListAdapter.ContactInfo contact : cachedContacts) {
+            ContactsPageListAdapter.ContactNode contactNode =
+                    new ContactsPageListAdapter.ContactNode(contact, 1);
+            root.addChild(contactNode);
+        }
+        tree.addRootNode(root);
     }
 
     @Override
@@ -188,6 +344,24 @@ public class MainFragment extends Fragment {
                     LinearLayout menu = (LinearLayout) LayoutInflater
                             .from(getActivity())
                             .inflate(R.layout.pop_menu_layout, null);
+                    
+                    // 为"加好友/群"菜单项添加点击事件
+                    // 获取第二个LinearLayout（加好友/群）
+                    if (menu.getChildCount() > 1) {
+                        View addFriendItem = menu.getChildAt(1); // 索引为1的是加好友/群项
+                        addFriendItem.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                // 跳转到添加联系人界面
+                                Intent intent = new Intent(getActivity(), AddContactActivity.class);
+                                startActivity(intent);
+                                // 关闭弹出菜单
+                                if (pop != null && pop.isShowing()) {
+                                    pop.dismiss();
+                                }
+                            }
+                        });
+                    }
 
                     //设置window中要显示的View
                     pop.setContentView(menu);
@@ -207,8 +381,41 @@ public class MainFragment extends Fragment {
             }
         });
 
-        //头像监听器
+            //头像监听器
         ImageView headImage = rootView.findViewById(R.id.headImage);
+        
+        // 设置主页面头像
+        ContactsPageListAdapter.ContactInfo myInfo = MainActivity.myInfo;
+        if (myInfo != null) {
+            // 使用Glide加载头像，正确处理头像URL
+            String avatarUrl = myInfo.getAvatarUrl();
+            String serverHost = MainActivity.serverHostURL;
+            
+            // 确保服务器主机地址不为空
+            if (serverHost == null || serverHost.isEmpty()) {
+                serverHost = "http://10.0.2.2:8081"; // 使用默认值
+            }
+            
+            // 构建完整的头像URL，仅当avatarUrl不为空时才拼接
+            String imgURL = null;
+            if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                // 检查URL是否已经是完整路径（以http开头）
+                if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+                    imgURL = avatarUrl;
+                } else {
+                    // 如果不是完整路径，则拼接服务器地址
+                    imgURL = serverHost + (serverHost.endsWith("/") ? "" : "/") + avatarUrl;
+                }
+            }
+            
+            // 使用Glide加载头像，如果imgURL为空则自动使用占位符
+            Glide.with(getContext())
+                    .load(imgURL)
+                    .placeholder(R.drawable.contacts_normal) // 设置占位图
+                    .error(R.drawable.contacts_normal)      // 设置错误图
+                    .into(headImage);
+        }
+        
         headImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -399,6 +606,57 @@ public class MainFragment extends Fragment {
                 animatorSet.playTogether(animatorContent,animatorMask,animatorDrawer);
                 animatorSet.setDuration(duration);
                 animatorSet.start();
+                
+                // 设置抽屉页面的用户信息
+                ContactsPageListAdapter.ContactInfo myInfo = MainActivity.myInfo;
+                if (myInfo != null) {
+                    // 设置用户名
+                    TextView drawerUsername = drawerLayout.findViewById(R.id.textView8);
+                    if (drawerUsername != null) {
+                        drawerUsername.setText(myInfo.getName());
+                    }
+                    
+                    // 设置状态信息
+                    TextView drawerStatus = drawerLayout.findViewById(R.id.textView9);
+                    if (drawerStatus != null) {
+                        String status = myInfo.getStatus();
+                        if (status != null && !status.isEmpty()) {
+                            drawerStatus.setText(status);
+                        }
+                    }
+                    
+                    // 设置头像
+                    ImageView drawerAvatar = drawerLayout.findViewById(R.id.imageView4);
+                    if (drawerAvatar != null) {
+                        // 使用Glide加载头像
+                        String imgURL = MainActivity.serverHostURL + myInfo.getAvatarUrl();
+                        Glide.with(getContext())
+                                .load(imgURL)
+                                .placeholder(R.drawable.contacts_normal)
+                                .into(drawerAvatar);
+                        
+                        // 给抽屉页面的头像添加点击事件，跳转到我的资料页面
+                        drawerAvatar.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                // 跳转到我的资料页面
+                                Intent intent = new Intent(getContext(), ProfileActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                    }
+                }
+                
+                // 给登出标签添加点击事件
+                TextView logoutTextView = drawerLayout.findViewById(R.id.textViewLogout);
+                if (logoutTextView != null) {
+                    logoutTextView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            showLogoutMenu();
+                        }
+                    });
+                }
             }
         });
 
@@ -450,8 +708,7 @@ public class MainFragment extends Fragment {
     }
 
     //创建并初始化联系人页面，返回这个页面
-    private View createContactsPage(){
-        //创建View
+    private View createContactsPage(){        //创建View
         View v = getLayoutInflater().inflate(R.layout.contacts_page_layout,null);
         
         // 为顶部搜索框设置点击事件
@@ -466,53 +723,146 @@ public class MainFragment extends Fragment {
             });
         }
         
-        //创建适配器
-        ContactsPageListAdapter adapter = new ContactsPageListAdapter();
-        
-        //向适配器中添加组节点
-        //创建组们
-        ContactsPageListAdapter.GroupInfo group1=new ContactsPageListAdapter.GroupInfo("特别关心",0);
-        ContactsPageListAdapter.GroupInfo group2=new ContactsPageListAdapter.GroupInfo("我的好友",1);
-        ContactsPageListAdapter.GroupInfo group3=new ContactsPageListAdapter.GroupInfo("朋友",0);
-        ContactsPageListAdapter.GroupInfo group4=new ContactsPageListAdapter.GroupInfo("家人",0);
-        ContactsPageListAdapter.GroupInfo group5=new ContactsPageListAdapter.GroupInfo("同学",0);
-
-        //添加组节点到适配器
-        ContactsPageListAdapter.GroupNode groupNode1 = adapter.addGroupNode(group1);
-        ContactsPageListAdapter.GroupNode groupNode2 = adapter.addGroupNode(group2);
-        ContactsPageListAdapter.GroupNode groupNode3 = adapter.addGroupNode(group3);
-        ContactsPageListAdapter.GroupNode groupNode4 = adapter.addGroupNode(group4);
-        ContactsPageListAdapter.GroupNode groupNode5 = adapter.addGroupNode(group5);
-
-        //第二层，联系人信息
-        //联系人1 - 使用id代替bitmap
-        ContactsPageListAdapter.ContactInfo contact1 = new ContactsPageListAdapter.ContactInfo(
-                1, "王二", "[在线]我是王二");
-        //联系人2 - 使用id代替bitmap
-        ContactsPageListAdapter.ContactInfo contact2 = new ContactsPageListAdapter.ContactInfo(
-                2, "王三", "[离线]我没有状态");
-        
-        //添加联系人到指定组
-        adapter.addContactToGroup(groupNode2, contact1);
-        adapter.addContactToGroup(groupNode2, contact2);
-
         //获取页面里的RecyclerView，为它设置Adapter
-        RecyclerView recyclerView = v.findViewById(R.id.contactListView);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        contactsRecyclerView = v.findViewById(R.id.contactListView);
+        contactsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         
-        // 设置Adapter，禁用底部搜索框，因为我们使用顶部的搜索框
-        adapter.setShowSearchBox(false);
+        // 默认渲染分组视图
+        showGroupView();
         
-        recyclerView.setAdapter(adapter);
+        // 初始获取联系人数据
+        // fetchContactsFromServer()方法已集成到定时器逻辑中，这里不再需要单独调用
         
-        // 将联系人数据添加到静态tree对象中，用于搜索功能
-        // 先清空tree
-        tree.clear();
-        
-        // 直接将适配器中已创建的GroupNode添加到tree作为根节点
-        tree.addRootNode(groupNode2); // 这是"我的好友"组
+        // 获取TabLayout并设置切换监听器
+        TabLayout contactsTabLayout = v.findViewById(R.id.contactsTabLayout);
+        if (contactsTabLayout != null) {
+            contactsTabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+                @Override
+                public void onTabSelected(TabLayout.Tab tab) {
+                    handleTabSelection(tab.getPosition());
+                }
+
+                @Override
+                public void onTabUnselected(TabLayout.Tab tab) {
+                }
+
+                @Override
+                public void onTabReselected(TabLayout.Tab tab) {
+                }
+            });
+            // 默认选中第一个标签（分组）
+            contactsTabLayout.getTabAt(0).select();
+        }
         
         return v;
+    }
+    
+    // 处理Tab切换逻辑
+    private void handleTabSelection(int position) {
+        if (contactsRecyclerView == null) {
+            return;
+        }
+        
+        switch (position) {
+            case 0: // 分组标签
+                // 只显示特别关心和我的好友两个组
+                currentContactsTab = 0;
+                showGroupView();
+                break;
+            case 1: // 好友标签
+                // 显示好友列表，按首字母排序
+                currentContactsTab = 1;
+                showFriendsView();
+                break;
+            default: // 其他标签（群聊、频道、机器人、设备）
+                // 显示"持续更新中..."
+                currentContactsTab = 2;
+                showUpdatingView();
+                break;
+        }
+    }
+    
+    // 显示分组视图
+    private void showGroupView() {
+        if (contactsRecyclerView == null) {
+            return;
+        }
+        currentContactsTab = 0;
+        contactsAdapter = new ContactsPageListAdapter();
+        contactsAdapter.setShowSearchBox(false);
+        
+        ContactsPageListAdapter.GroupInfo group1 =
+                new ContactsPageListAdapter.GroupInfo("特别关心", 0);
+        ContactsPageListAdapter.GroupInfo group2 =
+                new ContactsPageListAdapter.GroupInfo("我的好友", cachedContacts.size());
+        
+        groupNode1 = contactsAdapter.addGroupNode(group1);
+        groupNode2 = contactsAdapter.addGroupNode(group2);
+        
+        for (ContactsPageListAdapter.ContactInfo contact : cachedContacts) {
+            contactsAdapter.addContactToGroup(groupNode2, contact);
+        }
+        
+        contactsRecyclerView.setAdapter(contactsAdapter);
+    }
+    
+    // 显示好友视图 - 按首字母排序显示
+    private void showFriendsView() {
+        if (contactsRecyclerView == null) {
+            return;
+        }
+        currentContactsTab = 1;
+        contactsAdapter = new ContactsPageListAdapter();
+        contactsAdapter.setShowSearchBox(false);
+        
+        List<ContactsPageListAdapter.ContactNode> allContacts = new ArrayList<>();
+        for (ContactsPageListAdapter.ContactInfo contact : cachedContacts) {
+            allContacts.add(new ContactsPageListAdapter.ContactNode(contact, 0));
+        }
+        
+        contactsAdapter.generateAlphabetSortedContacts(allContacts);
+        contactsRecyclerView.setAdapter(contactsAdapter);
+    }
+    
+    // 显示"持续更新中..."视图
+    private void showUpdatingView() {
+        currentContactsTab = 2;
+        if (contactsRecyclerView == null) {
+            return;
+        }
+        // 创建一个简单的适配器来显示"持续更新中..."
+        RecyclerView.Adapter adapter = new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            @Override
+            public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+                View view = LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.simple_text_item, parent, false);
+                // 设置整个View的居中对齐
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                params.topMargin = 100; // 增加顶部间距，使文本在屏幕中间
+                view.setLayoutParams(params);
+                return new RecyclerView.ViewHolder(view) {};
+            }
+
+            @Override
+            public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+                TextView textView = holder.itemView.findViewById(R.id.text_view);
+                textView.setText("持续更新中...");
+                textView.setGravity(Gravity.CENTER);
+                textView.setTextSize(18);
+                textView.setTextColor(Color.GRAY);
+            }
+
+            @Override
+            public int getItemCount() {
+                return 1;
+            }
+        };
+        
+        // 清空RecyclerView并设置新的适配器
+        contactsRecyclerView.setAdapter(null);
+        contactsRecyclerView.setAdapter(adapter);
     }
 
     // 为ViewPager派生一个适配器类
@@ -550,9 +900,11 @@ public class MainFragment extends Fragment {
         //为参数title中的字符串前面加上iconResId所引用图像
         public CharSequence makeTabItemTitle(String title,int iconResId) {
             Drawable image = getResources().getDrawable(iconResId);
-            image.setBounds(0, 0, 40, 40);
+            // 使用dp转换为像素
+                int iconSize = (int)(40 * getResources().getDisplayMetrics().density);
+                image.setBounds(0, 0, iconSize, iconSize);
             //Replace blank spaces with image icon
-            SpannableString sb = new SpannableString(" \n"+title);
+            SpannableString sb = new SpannableString(" "+title);
             ImageSpan imageSpan = new ImageSpan(image, ImageSpan.ALIGN_BASELINE);
             sb.setSpan(imageSpan, 0,1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             return sb;
@@ -570,6 +922,126 @@ public class MainFragment extends Fragment {
             }
             return null;
         }
+    }
+    
+    // 显示退出登录底部菜单
+    private void showLogoutMenu() {
+        BottomSheetDialog sheetDialog = new BottomSheetDialog(getActivity());
+        View view = getLayoutInflater().inflate(R.layout.logout_sheet_menu, null);
+        sheetDialog.setContentView(view);
+        sheetDialog.show();
+        
+        // 退出登录
+        view.findViewById(R.id.sheetItemLogout).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sheetDialog.dismiss();
+                showLogoutConfirmDialog(true);
+            }
+        });
+        
+        // 退出QQ
+        view.findViewById(R.id.sheetItemExitQQ).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sheetDialog.dismiss();
+                showLogoutConfirmDialog(false);
+            }
+        });
+        
+        // 取消
+        view.findViewById(R.id.sheetItemCancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sheetDialog.dismiss();
+            }
+        });
+    }
+    
+    // 显示退出确认对话框
+    private void showLogoutConfirmDialog(boolean isLogout) {
+        String title = isLogout ? "退出登录" : "退出QQ";
+        String message = isLogout ? "确定要退出登录吗？" : "确定要退出QQ吗？";
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        builder.setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("确认", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        if (isLogout) {
+                            performLogout(); // 退出登录，返回登录页面
+                        } else {
+                            performExitQQ(); // 退出QQ，完全退出应用
+                        }
+                    }
+                })
+                .setNegativeButton("取消", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .show();
+    }
+    
+    // 执行退出QQ，完全退出应用
+    private void performExitQQ() {
+        // 清除用户信息
+        MainActivity.myInfo = null;
+        
+        // 停止定时器
+        if (observableDisposable != null && !observableDisposable.isDisposed()) {
+            observableDisposable.dispose();
+            observableDisposable = null;
+        }
+        
+        // 清除登录状态（可选，根据需求决定是否在退出QQ时清除登录状态）
+        // 在这里我们不清除登录状态，这样用户再次进入应用时仍会保持登录
+        
+        // 完全退出应用
+        android.os.Process.killProcess(android.os.Process.myPid());
+        System.exit(0);
+    }
+    
+    // 执行退出登录
+    private void performLogout() {
+        // 清除用户信息
+        MainActivity.myInfo = null;
+        
+        // 停止定时器
+        if (observableDisposable != null && !observableDisposable.isDisposed()) {
+            observableDisposable.dispose();
+            observableDisposable = null;
+        }
+        
+        // 清除登录状态标记和用户信息
+        SharedPreferences preferences = getActivity().getSharedPreferences("qqapp", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("is_logged_in", false);
+        // 清除用户信息
+        editor.remove("username");
+        editor.remove("status");
+        editor.remove("userId");
+        // 清除头像URL信息
+        editor.remove("avatarUrl");
+        editor.commit();
+        
+        // 清除可能的用户数据缓存
+        // 这里可以添加清除其他用户相关数据的代码
+        
+        // 返回登录页面
+        FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        LoginFragment loginFragment = new LoginFragment();
+        loginFragment.setMainActivity((MainActivity) getActivity());
+        fragmentTransaction.replace(R.id.fragment_container, loginFragment);
+        // 设置事务动画（可选）
+        fragmentTransaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN);
+        // 清空后退栈，这样用户无法通过返回键回到主页面
+        fragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+        // 使用commitNow()确保立即执行，避免状态不一致
+        fragmentTransaction.commitNow();
     }
 }
 

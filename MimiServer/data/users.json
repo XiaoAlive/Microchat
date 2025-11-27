@@ -1,0 +1,12 @@
+{
+  "lastId" : 1,
+  "users" : [ {
+    "id" : 1,
+    "username" : "test1",
+    "password" : "111",
+    "phone" : "19977441001",
+    "phoneEmail" : "19977441001",
+    "avatarUrl" : "/uploads/head/1.png",
+    "account" : "8355984843"
+  } ]
+}

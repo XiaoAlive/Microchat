@@ -35,6 +35,33 @@
             app:layout_constraintTop_toTopOf="@+id/imageView"
             android:layout_marginStart="8dp" />
 
+    <TextView
+            android:id="@+id/tvAccountLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="32dp"
+            android:layout_marginTop="40dp"
+            android:text="账号登录"
+            android:textColor="@android:color/holo_blue_dark"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:padding="8dp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/imageView" />
+
+    <TextView
+            android:id="@+id/tvPhoneLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginTop="40dp"
+            android:text="手机号登录"
+            android:textColor="@android:color/holo_blue_light"
+            android:textSize="16sp"
+            android:padding="8dp"
+            app:layout_constraintLeft_toRightOf="@+id/tvAccountLogin"
+            app:layout_constraintTop_toBottomOf="@+id/imageView" />
+
     <EditText
             android:id="@+id/editTextQQNum"
             android:layout_width="0dp"
@@ -43,16 +70,16 @@
             android:layout_marginLeft="32dp"
             android:layout_marginRight="32dp"
             android:layout_marginStart="32dp"
-            android:layout_marginTop="40dp"
+            android:layout_marginTop="10dp"
             android:alpha="0.8"
             android:background="@drawable/edit_bk_selector"
             android:ems="10"
-            android:hint="QQ号/手机号/邮箱"
+            android:hint="QQ号"
             android:inputType="textPersonName"
             app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/imageView" />
+            app:layout_constraintTop_toBottomOf="@+id/tvAccountLogin" />
 
     <TextView
             android:id="@+id/textViewHistory"
@@ -87,31 +114,88 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
 
-            <EditText
-                    android:id="@+id/editTextPassword"
+            <!-- 密码和验证码输入容器 -->
+            <RelativeLayout
+                    android:id="@+id/inputContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                <EditText
+                        android:id="@+id/editTextPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:alpha="0.8"
+                        android:background="@drawable/edit_bk_selector"
+                        android:ems="10"
+                        android:hint="密码"
+                        android:inputType="textPassword" />
+
+                <EditText
+                        android:id="@+id/editTextVerificationCode"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="120dp"
+                        android:alpha="0.8"
+                        android:background="@drawable/edit_bk_selector"
+                        android:ems="10"
+                        android:hint="验证码"
+                        android:inputType="number"
+                        android:visibility="gone" />
+
+                <TextView
+                        android:id="@+id/tvGetVerificationCode"
+                        android:layout_width="100dp"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:background="@android:color/holo_blue_light"
+                        android:gravity="center"
+                        android:padding="8dp"
+                        android:text="获取验证码"
+                        android:textColor="@android:color/white"
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+            </RelativeLayout>
+
+            <!-- 通用错误提示文本 -->
+            <TextView
+                    android:id="@+id/tvErrorMessage"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:alpha="0.8"
-                    android:background="@drawable/edit_bk_selector"
-                    android:ems="10"
-                    android:hint="密码"
-                    android:inputType="textPassword"
-                    app:layout_constraintHorizontal_bias="0.0"
+                    android:layout_marginTop="5dp"
+                    android:textColor="@android:color/holo_red_light"
+                    android:textSize="12sp"
+                    android:visibility="gone"
                     app:layout_constraintLeft_toLeftOf="parent"
                     app:layout_constraintRight_toRightOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    app:layout_constraintTop_toBottomOf="@+id/inputContainer" />
+
+            <!-- 手机号格式错误提示文本（保留原有，但使用通用错误提示） -->
+            <TextView
+                    android:id="@+id/tvPhoneFormatError"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="手机号格式有误"
+                    android:textColor="@android:color/holo_red_light"
+                    android:textSize="12sp"
+                    android:visibility="gone"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/inputContainer" />
 
             <Button
                     android:id="@+id/buttonLogin"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="13dp"
+                    android:layout_marginTop="24dp"
                     android:alpha="0.7"
                     android:background="@android:color/holo_blue_light"
                     android:text="登录"
                     app:layout_constraintLeft_toLeftOf="parent"
                     app:layout_constraintRight_toRightOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/editTextPassword" />
+                    app:layout_constraintTop_toBottomOf="@+id/tvErrorMessage" />
 
             <TextView
                     android:id="@+id/textViewForget"
@@ -123,12 +207,24 @@
                     app:layout_constraintLeft_toLeftOf="@+id/buttonLogin"
                     app:layout_constraintTop_toBottomOf="@+id/buttonLogin" />
 
+
+
             <TextView
                     android:id="@+id/textViewRegister"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:text="新用户注册"
+                    android:textColor="@android:color/holo_blue_dark"
+                    app:layout_constraintLeft_toLeftOf="@+id/buttonLogin"
+                    app:layout_constraintTop_toBottomOf="@+id/buttonLogin" />
+
+            <TextView
+                    android:id="@+id/textViewDBManage"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="数据库管理"
                     android:textColor="@android:color/holo_blue_dark"
                     app:layout_constraintRight_toRightOf="@+id/buttonLogin"
                     app:layout_constraintTop_toBottomOf="@+id/buttonLogin" />

@@ -1,4 +1,4 @@
-package com.example.microchat;
+package com.example.microchat.service;
 
 import retrofit2.Retrofit;
 

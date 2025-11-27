@@ -11,22 +11,35 @@ import android.widget.TextView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.microchat.ChatActivity;
+import com.example.microchat.MainActivity;
 import com.example.microchat.R;
 import com.example.microchat.model.ListTree;
+import com.bumptech.glide.Glide;
+import com.google.gson.annotations.SerializedName;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     //树形节点基类
+    //节点类型常量
+    public static final int NODE_TYPE_GROUP = 0; //组节点类型
+    public static final int NODE_TYPE_CONTACT = 1; //联系人节点类型
+    public static final int NODE_TYPE_SEARCH = 2; //搜索节点类型
+    public static final int NODE_TYPE_HEADER = 3; //首字母标题类型
+    
     public static abstract class TreeNode {
         protected Object data;
         protected int level = 0;
         protected boolean expanded = false;
         protected List<TreeNode> children = new ArrayList<>();
         protected TreeNode parent;
+        
+        public abstract int getType();
 
         public TreeNode(Object data, int level) {
             this.data = data;
@@ -81,6 +94,11 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
         public boolean isExpandable() {
             return true;
         }
+        
+        @Override
+        public int getType() {
+            return NODE_TYPE_GROUP;
+        }
 
         public GroupInfo getGroupInfo() {
             return (GroupInfo) data;
@@ -101,6 +119,11 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
         @Override
         public boolean isExpandable() {
             return false;
+        }
+        
+        @Override
+        public int getType() {
+            return NODE_TYPE_CONTACT;
         }
 
         public ContactInfo getContactInfo() {
@@ -132,29 +155,79 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
     public static class ContactInfo implements Serializable {
         //头像在服务器的路径
         private int id;
-        private String name; //名字
+        @com.google.gson.annotations.SerializedName("username")
+        private String name; //名字，从服务器的username字段映射
         private String status; //状态
+        private String avatarUrl; //头像URL，如果为空则使用默认头像
+        private String phone; //电话号码
+        private String account; //10位数字账号
+
+        // 无参构造函数，Gson反序列化需要
+        public ContactInfo() {
+        }
 
         public ContactInfo(int id, String name, String status) {
             this.id = id;
             this.name = name;
             this.status = status;
+            this.avatarUrl = null; // 初始化为空，表示使用默认头像
         }
 
         public int getId() {
             return this.id;
         }
 
+        public void setId(int id) {
+            this.id = id;
+        }
+
         public String getAvatarUrl() {
-            return "/image/head/" + id + ".png";
+            // 如果avatarUrl为空，返回默认头像路径
+            if (avatarUrl == null || avatarUrl.isEmpty()) {
+                return "/image/head/" + id + ".png"; // 默认头像路径
+            }
+            return avatarUrl;
+        }
+
+        public void setAvatarUrl(String avatarUrl) {
+            this.avatarUrl = avatarUrl;
         }
 
         public String getName() {
             return name;
         }
 
+        public void setName(String name) {
+            this.name = name;
+        }
+
         public String getStatus() {
             return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public void setPhone(String phone) {
+            this.phone = phone;
+        }
+
+        public String getAccount() {
+            return account;
+        }
+
+        public void setAccount(String account) {
+            this.account = account;
+        }
+
+        // 检查是否使用默认头像
+        public boolean isUsingDefaultAvatar() {
+            return avatarUrl == null || avatarUrl.isEmpty();
         }
     }
 
@@ -162,6 +235,22 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
     private List<TreeNode> mAllNodes = new ArrayList<>();
     private boolean showSearchBox = false;
     private OnSearchClickListener searchClickListener;
+    private TreeNode searchNode = new TreeNode(null, 0) {
+        @Override
+        public int getLayoutId() {
+            return R.layout.common_search_view;
+        }
+        
+        @Override
+        public boolean isExpandable() {
+            return false;
+        }
+        
+        @Override
+        public int getType() {
+            return NODE_TYPE_SEARCH;
+        }
+    };
 
     public ContactsPageListAdapter() {
     }
@@ -190,14 +279,55 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
             }
         }
     }
+    
+    //清空指定组中的所有联系人
+    public void clearContactsInGroup(GroupNode groupNode) {
+        // 记录组在可见列表中的位置
+        int groupIndex = mVisibleNodes.indexOf(groupNode);
+        boolean wasExpanded = groupNode.isExpanded();
+        
+        // 移除组下的所有子节点
+        List<TreeNode> childrenToRemove = new ArrayList<>(groupNode.getChildren());
+        for (TreeNode child : childrenToRemove) {
+            groupNode.getChildren().remove(child);
+            mAllNodes.remove(child);
+        }
+        
+        // 如果组是展开的，移除可见列表中的联系人
+        if (wasExpanded && groupIndex != -1) {
+            int childCount = removeAllChildren(groupNode, groupIndex + 1);
+            if (childCount > 0) {
+                notifyItemRangeRemoved(toAdapterPosition(groupIndex + 1), childCount);
+            }
+        }
+        
+        // 更新组节点的状态（重置为折叠）
+        groupNode.setExpanded(false);
+        if (groupIndex != -1) {
+            notifyItemChanged(toAdapterPosition(groupIndex));
+        }
+    }
 
     //切换组节点的展开/折叠状态
     public void toggleGroup(int position) {
+        toggleGroup(position, null);
+    }
+    
+    //切换组节点的展开/折叠状态（带箭头视图参数）
+    public void toggleGroup(int position, ImageView arrowView) {
+        if (position < 0 || position >= mVisibleNodes.size()) {
+            return;
+        }
         TreeNode node = mVisibleNodes.get(position);
         if (node instanceof GroupNode && node.isExpandable()) {
             GroupNode groupNode = (GroupNode) node;
             boolean expanded = !groupNode.isExpanded();
             groupNode.setExpanded(expanded);
+            
+            // 更新箭头方向
+            if (arrowView != null) {
+                updateArrowIcon(arrowView, expanded);
+            }
             
             int startPosition = position + 1;
             int childCount = 0;
@@ -208,15 +338,52 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
                     mVisibleNodes.add(startPosition + childCount, child);
                     childCount++;
                 }
-                notifyItemRangeInserted(startPosition, childCount);
+                notifyItemRangeInserted(toAdapterPosition(startPosition), childCount);
             } else {
                 //折叠组，移除所有子节点
                 childCount = removeAllChildren(groupNode, startPosition);
-                notifyItemRangeRemoved(startPosition, childCount);
+                notifyItemRangeRemoved(toAdapterPosition(startPosition), childCount);
             }
             
             //通知组节点自身状态改变
-            notifyItemChanged(position);
+            notifyItemChanged(toAdapterPosition(position));
+        }
+    }
+    
+    // 添加首字母标题节点
+    public void addHeaderNode(String headerText) {
+        HeaderNode headerNode = new HeaderNode(headerText);
+        mAllNodes.add(headerNode);
+        mVisibleNodes.add(headerNode);
+        notifyDataSetChanged();
+    }
+    
+    // 首字母标题节点类
+    public static class HeaderNode extends TreeNode {
+        private String headerText;
+        
+        public HeaderNode(String headerText) {
+            super(headerText, 0);
+            this.headerText = headerText;
+        }
+        
+        public String getHeaderText() {
+            return headerText;
+        }
+        
+        @Override
+        public int getLayoutId() {
+            return 0; // 不再使用
+        }
+        
+        @Override
+        public boolean isExpandable() {
+            return false;
+        }
+        
+        @Override
+        public int getType() {
+            return NODE_TYPE_HEADER;
         }
     }
 
@@ -275,9 +442,9 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
         if (showSearchBox && position == 0) {
             return R.layout.common_search_view;
         }
-        // 否则返回对应节点的布局ID
+        // 否则返回对应节点的类型
         int nodePosition = showSearchBox ? position - 1 : position;
-        return mVisibleNodes.get(nodePosition).getLayoutId();
+        return mVisibleNodes.get(nodePosition).getType();
     }
 
     @Override
@@ -287,14 +454,18 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
             // 搜索框视图
             View view = inflater.inflate(viewType, parent, false);
             return new SearchViewHolder(view);
-        } else if (viewType == R.layout.contacts_group_item) {
+        } else if (viewType == NODE_TYPE_GROUP) {
             // 组节点视图
-            View view = inflater.inflate(viewType, parent, false);
+            View view = inflater.inflate(R.layout.contacts_group_item, parent, false);
             return new GroupViewHolder(view);
-        } else if (viewType == R.layout.contacts_contact_item) {
+        } else if (viewType == NODE_TYPE_CONTACT) {
             // 联系人节点视图
-            View view = inflater.inflate(viewType, parent, false);
+            View view = inflater.inflate(R.layout.contacts_contact_item, parent, false);
             return new ContactViewHolder(view);
+        } else if (viewType == NODE_TYPE_HEADER) {
+            // 首字母标题视图
+            View view = inflater.inflate(R.layout.contacts_header_item, parent, false);
+            return new HeaderViewHolder(view);
         }
         return null;
     }
@@ -336,56 +507,162 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
             GroupViewHolder groupHolder = (GroupViewHolder) holder;
             
             groupHolder.textViewTitle.setText(groupNode.getGroupInfo().getTitle());
-            groupHolder.textViewCount.setText(groupNode.getGroupInfo().getOnlineCount() + "/" + groupNode.getChildrenCount());
             
-            //设置展开/折叠图标
-            if (groupNode.isExpandable() && groupNode.getChildrenCount() > 0) {
-                groupHolder.imageViewExpand.setVisibility(View.VISIBLE);
-                if (groupNode.isExpanded()) {
-                    groupHolder.imageViewExpand.setImageResource(android.R.drawable.arrow_up_float);
-                } else {
-                    groupHolder.imageViewExpand.setImageResource(android.R.drawable.arrow_down_float);
-                }
-                
-                //设置点击事件
-                groupHolder.imageViewExpand.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        toggleGroup(position);
+            //设置展开/折叠图标（始终展示箭头）
+            groupHolder.imageViewExpand.setVisibility(View.VISIBLE);
+            updateArrowIcon(groupHolder.imageViewExpand, groupNode.isExpanded());
+            
+            View.OnClickListener toggleListener = new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int adapterPos = groupHolder.getAdapterPosition();
+                    if (adapterPos == RecyclerView.NO_POSITION) {
+                        return;
                     }
-                });
-            } else {
-                groupHolder.imageViewExpand.setVisibility(View.GONE);
-            }
+                    int nodePos = showSearchBox ? adapterPos - 1 : adapterPos;
+                    if (nodePos < 0) {
+                        return;
+                    }
+                    toggleGroup(nodePos, groupHolder.imageViewExpand);
+                }
+            };
+            groupHolder.itemView.setOnClickListener(toggleListener);
+            groupHolder.imageViewExpand.setOnClickListener(toggleListener);
         } else if (holder instanceof ContactViewHolder && node instanceof ContactNode) {
             ContactNode contactNode = (ContactNode) node;
             ContactViewHolder contactHolder = (ContactViewHolder) holder;
             
             ContactInfo info = contactNode.getContactInfo();
-            // 由于头像现在是一个URL路径，我们暂时使用默认头像
-            // 在实际应用中，这里应该使用图片加载库（如Glide或Picasso）根据URL加载图片
-            contactHolder.imageViewHead.setImageResource(R.drawable.contacts_normal); //使用默认头像
+            
+            // 使用Glide下载网络图片并设置到图像控件中
+            String imgURL = MainActivity.serverHostURL + info.getAvatarUrl();
+            Glide.with(contactHolder.itemView.getContext()).load(imgURL).placeholder(R.drawable.contacts_focus).into(contactHolder.imageViewHead);
+            
             contactHolder.textViewTitle.setText(info.getName());
             contactHolder.textViewDetail.setText(info.getStatus());
+        } else if (holder instanceof HeaderViewHolder && node instanceof HeaderNode) {
+            HeaderNode headerNode = (HeaderNode) node;
+            HeaderViewHolder headerHolder = (HeaderViewHolder) holder;
+            headerHolder.textViewHeader.setText(headerNode.getHeaderText());
         }
     }
 
     //组ViewHolder
     class GroupViewHolder extends RecyclerView.ViewHolder {
         TextView textViewTitle;    //显示标题的控件
-        TextView textViewCount;    //显示好友数/在线数的控件
         ImageView imageViewExpand; //展开/折叠图标
 
         public GroupViewHolder(View itemView) {
             super(itemView);
             textViewTitle = itemView.findViewById(R.id.textViewTitle);
-            textViewCount = itemView.findViewById(R.id.textViewCount);
-            //添加展开/折叠图标
-            imageViewExpand = new ImageView(itemView.getContext());
-            if (itemView instanceof ViewGroup) {
-                ((ViewGroup) itemView).addView(imageViewExpand);
+            imageViewExpand = itemView.findViewById(R.id.imageViewExpand); // 获取箭头视图
+        }
+    }
+    
+    //首字母标题ViewHolder
+    class HeaderViewHolder extends RecyclerView.ViewHolder {
+        TextView textViewHeader; //首字母标题
+
+        public HeaderViewHolder(View itemView) {
+            super(itemView);
+            textViewHeader = itemView.findViewById(R.id.header_text);
+        }
+    }
+    
+    // 按首字母排序联系人并生成首字母分组视图
+    public void generateAlphabetSortedContacts(List<ContactNode> allContacts) {
+        // 清空当前节点列表
+        mAllNodes.clear();
+        mVisibleNodes.clear();
+        
+        // 使用TreeMap自动按键排序
+        TreeMap<String, List<ContactNode>> sortedContacts = new TreeMap<>(new java.util.Comparator<String>() {
+            @Override
+            public int compare(String o1, String o2) {
+                if ("#".equals(o1) && "#".equals(o2)) {
+                    return 0;
+                }
+                if ("#".equals(o1)) {
+                    return 1;
+                }
+                if ("#".equals(o2)) {
+                    return -1;
+                }
+                return o1.compareTo(o2);
+            }
+        });
+        
+        // 遍历所有联系人，按首字母分组
+        for (ContactNode contact : allContacts) {
+            if (contact.getContactInfo() != null && contact.getContactInfo().getName() != null) {
+                String name = contact.getContactInfo().getName();
+                if (!name.isEmpty()) {
+                    // 获取联系人名字的首字母（这里简化处理）
+                    String firstLetter = name.substring(0, 1).toUpperCase();
+                    
+                    // 如果首字母不是A-Z的字母，使用#代替
+                    if (!firstLetter.matches("[A-Z]") && !firstLetter.matches("[a-z]")) {
+                        firstLetter = "#";
+                    } else {
+                        firstLetter = firstLetter.toUpperCase();
+                    }
+                    
+                    // 将联系人添加到对应的首字母分组中
+                    List<ContactNode> contactsInGroup = sortedContacts.get(firstLetter);
+                    if (contactsInGroup == null) {
+                        contactsInGroup = new ArrayList<>();
+                        sortedContacts.put(firstLetter, contactsInGroup);
+                    }
+                    contactsInGroup.add(contact);
+                }
             }
         }
+        
+        // 遍历排序后的联系人，生成视图
+        for (Map.Entry<String, List<ContactNode>> entry : sortedContacts.entrySet()) {
+            String letter = entry.getKey();
+            List<ContactNode> contacts = entry.getValue();
+            java.util.Collections.sort(contacts, new java.util.Comparator<ContactNode>() {
+                @Override
+                public int compare(ContactNode o1, ContactNode o2) {
+                    String name1 = o1.getContactInfo().getName();
+                    String name2 = o2.getContactInfo().getName();
+                    if (name1 == null) {
+                        return -1;
+                    }
+                    if (name2 == null) {
+                        return 1;
+                    }
+                    return name1.compareToIgnoreCase(name2);
+                }
+            });
+            
+            // 添加首字母标题
+            HeaderNode headerNode = new HeaderNode(letter);
+            mAllNodes.add(headerNode);
+            mVisibleNodes.add(headerNode);
+            
+            // 添加该分组下的所有联系人
+            mAllNodes.addAll(contacts);
+            mVisibleNodes.addAll(contacts);
+        }
+        
+        // 通知数据变化
+        notifyDataSetChanged();
+    }
+
+    private void updateArrowIcon(ImageView arrowView, boolean expanded) {
+        if (arrowView == null) {
+            return;
+        }
+        arrowView.setImageResource(expanded ? R.drawable.ic_arrow_down_small : R.drawable.ic_arrow_right_small);
+    }
+
+    private int toAdapterPosition(int nodePosition) {
+        if (nodePosition < 0) {
+            return nodePosition;
+        }
+        return showSearchBox ? nodePosition + 1 : nodePosition;
     }
 
     //联系人ViewHolder

@@ -24,9 +24,11 @@
 
             <ImageView
                     android:id="@+id/headImage"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:srcCompat="?android:attr/textSelectHandle" />
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:scaleType="centerCrop"
+                    android:background="@drawable/avatar_background"
+                    app:srcCompat="@drawable/contacts_normal" />
 
             <TextView
                     android:id="@+id/textView3"
