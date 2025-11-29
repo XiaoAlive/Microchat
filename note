@@ -12,3 +12,14 @@ Android 对资源目录的命名有严格规则，drawable 目录的自定义子
 ![img.png](img.png)
 然后再选择density来自己决定创建什么样的density，如图所示：
 ![img_1.png](img_1.png)
+
+#3.完整的进程查看方法总结
+常用命令：
+
+查看所有占用端口的进程： netstat -ano
+
+查看特定端口占用： netstat -ano | findstr :端口号
+
+查看进程详细信息： tasklist /fi "pid eq 进程号"
+
+查看所有Java进程： jps -l

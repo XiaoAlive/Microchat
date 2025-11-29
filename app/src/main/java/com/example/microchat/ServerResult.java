@@ -1,11 +1,16 @@
 package com.example.microchat;
 
+import com.google.gson.annotations.SerializedName;
+
 public class ServerResult<T> {
     //等于0时表示无错误，其余值表示有错误，错误时，errMsg有值，否则无值
+    @SerializedName("retCode")
     private int retCode;
     //出错时的信息
+    @SerializedName("errMsg")
     private String errMsg;
     //真正返回的数据，其类型由参数T决定
+    @SerializedName("data")
     private T data;
 
     public ServerResult(int retCode) {

@@ -325,47 +325,8 @@ public class LoginFragment extends Fragment {
             // 获取ChatService实例
             ChatService service = retrofit.create(ChatService.class);
             
-            // 首先尝试从SharedPreferences中查找已保存的账号信息
-            SharedPreferences preferences = getContext().getSharedPreferences("qqapp", Context.MODE_PRIVATE);
-            String savedAccount = preferences.getString("account", "");
-            String savedUsername = preferences.getString("username", "");
-            int savedUserId = preferences.getInt("userId", 0);
-            String savedPhone = preferences.getString("phone", "");
-            String savedStatus = preferences.getString("status", "在线");
-            String savedAvatarUrl = preferences.getString("avatarUrl", "");
-            
-            // 如果当前手机号与保存的手机号相同，则使用已保存的信息
-            if (phoneNumber.equals(savedPhone) && !savedAccount.isEmpty()) {
-                // 使用已保存的信息创建ContactInfo对象
-                ContactsPageListAdapter.ContactInfo contactInfo = new ContactsPageListAdapter.ContactInfo();
-                contactInfo.setId(savedUserId);
-                contactInfo.setName(savedUsername);
-                contactInfo.setStatus(savedStatus);
-                contactInfo.setPhone(savedPhone);
-                contactInfo.setAccount(savedAccount);
-                if (!savedAvatarUrl.isEmpty()) {
-                    contactInfo.setAvatarUrl(savedAvatarUrl);
-                }
-                
-                // 保存用户信息
-                MainActivity.myInfo = contactInfo;
-                
-                // 保存登录状态到SharedPreferences
-                SharedPreferences.Editor editor = preferences.edit();
-                editor.putBoolean("is_logged_in", true);
-                editor.commit();
-                
-                Toast.makeText(getContext(), "登录成功", Toast.LENGTH_SHORT).show();
-                
-                // 跳转到主页面
-                FragmentManager fragmentManager = getActivity().getSupportFragmentManager();
-                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                MainFragment fragment = new MainFragment();
-                fragmentTransaction.replace(R.id.fragment_container, fragment);
-                fragmentTransaction.commit();
-                
-                return;
-            }
+            // 删除从SharedPreferences中读取旧数据的逻辑，确保每次都从服务器获取最新数据
+            // 直接调用服务器API获取用户信息，确保获取的是最新数据
             
             // 如果没有保存的信息或手机号不匹配，则调用服务器API获取用户信息
             showProgressBar();

@@ -527,7 +527,7 @@ public class RegisterActivity extends AppCompatActivity {
         editText.setHint("地址格式为: http://{IP地址}:{端口号}");
         // 为不同环境提供默认值提示
         String defaultHint = "注意：\n" +
-                           "- 在模拟器上: http://10.0.2.2:8081\n" +
+                           "- 在模拟器上: http://10.0.2.2:8080\n" +
                            "- 在真实设备上: 使用服务器的实际IP地址\n" +
                            "  (确保手机和服务器在同一网络)";
         AlertDialog.Builder inputDialog = new AlertDialog.Builder(this);

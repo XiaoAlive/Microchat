@@ -7,30 +7,79 @@
         android:layout_height="match_parent"
         tools:context="com.example.microchat.SearchActivity">
 
-    <SearchView
-            android:id="@+id/searchView"
+    <!-- 搜索框布局 -->
+    <LinearLayout
+        android:id="@+id/search_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="@color/gray_light"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        app:layout_constraintEnd_toStartOf="@+id/tvCancel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_search" />
+
+        <EditText
+            android:id="@+id/et_search"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintEnd_toStartOf="@+id/tvCancel"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:layout_marginEnd="8dp"
+            android:background="@null"
+            android:hint="账号/手机号"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:textColorHint="@color/gray"
+            android:imeOptions="actionSearch"
+            android:singleLine="true" />
+
+        <ImageButton
+            android:id="@+id/btn_clear"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="@null"
+            android:src="@drawable/ic_close"
+            android:visibility="gone" />
+
+    </LinearLayout>
 
     <TextView
             android:id="@+id/tvCancel"
             android:layout_width="wrap_content"
             android:layout_height="0dp"
-            android:layout_marginBottom="8dp"
+            android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
             android:padding="10dp"
             android:text="取消"
             android:textColor="@android:color/holo_blue_dark"
             android:textSize="14sp"
-            app:layout_constraintBottom_toBottomOf="@+id/searchView"
+            app:layout_constraintBottom_toBottomOf="@+id/search_container"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/searchView" />
+            app:layout_constraintTop_toTopOf="@+id/search_container" />
+
+    <!-- 用户不存在提示 -->
+    <TextView
+        android:id="@+id/tv_no_user"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="该用户不存在"
+        android:textColor="@color/gray"
+        android:textSize="14sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/search_container" />
 
     <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/resultListView"
@@ -43,6 +92,6 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/searchView" />
+            app:layout_constraintTop_toBottomOf="@+id/search_container" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

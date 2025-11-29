@@ -3,5 +3,6 @@ com\example\server\MimiServerApplication.class
 com\example\server\entity\Contact.class
 com\example\server\controller\ApiController.class
 com\example\server\entity\User.class
+com\example\server\controller\ApiController$3.class
 com\example\server\entity\Message.class
 com\example\server\controller\ApiController$1.class

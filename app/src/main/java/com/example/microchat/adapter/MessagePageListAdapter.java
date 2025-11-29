@@ -59,7 +59,7 @@ public class MessagePageListAdapter extends
 
     @Override
     public int getItemCount() {
-        return 10;
+        return 1;
     }
 
     @Override

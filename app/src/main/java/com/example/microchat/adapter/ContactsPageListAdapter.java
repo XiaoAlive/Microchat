@@ -155,8 +155,8 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
     public static class ContactInfo implements Serializable {
         //头像在服务器的路径
         private int id;
-        @com.google.gson.annotations.SerializedName("username")
-        private String name; //名字，从服务器的username字段映射
+        @com.google.gson.annotations.SerializedName("name")
+        private String name; //名字，从服务器的name字段映射
         private String status; //状态
         private String avatarUrl; //头像URL，如果为空则使用默认头像
         private String phone; //电话号码
@@ -253,6 +253,13 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
     };
 
     public ContactsPageListAdapter() {
+    }
+
+    //清空所有节点
+    public void clearAllNodes() {
+        mAllNodes.clear();
+        mVisibleNodes.clear();
+        notifyDataSetChanged();
     }
 
     //添加根节点（组节点）

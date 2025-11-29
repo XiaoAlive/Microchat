@@ -23,6 +23,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @RestController
 @RequestMapping("/apis")
+@Configuration
 public class ApiController implements WebMvcConfigurer {
     // 模拟数据库：用户、联系人、消息
     private final Map<Long, User> userMap = new ConcurrentHashMap<>();
@@ -117,10 +118,20 @@ public class ApiController implements WebMvcConfigurer {
         userMap.put(user.getId(), user);
         // 保存用户数据到文件
         saveUserData();
+        
+        // 创建与客户端ContactInfo对象匹配的数据结构
+        Map<String, Object> contactInfo = new HashMap<>();
+        contactInfo.put("id", user.getId());
+        contactInfo.put("name", user.getUsername());
+        contactInfo.put("account", user.getAccount());
+        contactInfo.put("phone", user.getPhone());
+        contactInfo.put("avatarUrl", user.getAvatarUrl());
+        contactInfo.put("status", "在线"); // 默认状态
+        
         Map<String, Object> result = new HashMap<>();
-        result.put("code", 200);
-        result.put("msg", "注册成功");
-        result.put("data", user);
+        result.put("retCode", 0); // 成功代码
+        result.put("errMsg", ""); // 空错误消息
+        result.put("data", contactInfo);
         return result;
     }
     
@@ -137,12 +148,78 @@ public class ApiController implements WebMvcConfigurer {
         
         Map<String, Object> result = new HashMap<>();
         if (foundUser != null) {
-            result.put("code", 200);
-            result.put("msg", "查询成功");
-            result.put("data", foundUser);
+            // 创建与客户端ContactInfo对象匹配的数据结构
+            Map<String, Object> contactInfo = new HashMap<>();
+            contactInfo.put("id", foundUser.getId());
+            contactInfo.put("name", foundUser.getUsername());
+            contactInfo.put("account", foundUser.getAccount());
+            contactInfo.put("phone", foundUser.getPhone());
+            contactInfo.put("avatarUrl", foundUser.getAvatarUrl());
+            contactInfo.put("status", "在线"); // 默认状态
+            
+            // 使用与客户端ServerResult对象一致的数据结构
+            result.put("retCode", 0); // 成功代码
+            result.put("errMsg", ""); // 空错误消息
+            result.put("data", contactInfo);
         } else {
-            result.put("code", 404);
-            result.put("msg", "用户不存在");
+            result.put("retCode", 404);
+            result.put("errMsg", "用户不存在");
+            result.put("data", null);
+        }
+        return result;
+    }
+    
+    // 搜索用户接口 /apis/searchUser
+    @GetMapping("/searchUser")
+    public Map<String, Object> searchUser(@RequestParam String keyword) {
+        User foundUser = null;
+        
+        // 通过账号搜索
+        for (User user : userMap.values()) {
+            if (user.getAccount() != null && user.getAccount().equals(keyword)) {
+                foundUser = user;
+                break;
+            }
+        }
+        
+        // 通过手机号搜索
+        if (foundUser == null) {
+            for (User user : userMap.values()) {
+                if (user.getPhone() != null && user.getPhone().equals(keyword)) {
+                    foundUser = user;
+                    break;
+                }
+            }
+        }
+        
+        // 通过用户名搜索
+        if (foundUser == null) {
+            for (User user : userMap.values()) {
+                if (user.getUsername() != null && user.getUsername().equals(keyword)) {
+                    foundUser = user;
+                    break;
+                }
+            }
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        if (foundUser != null) {
+            // 创建与客户端ContactInfo对象匹配的数据结构
+            Map<String, Object> contactInfo = new HashMap<>();
+            contactInfo.put("id", foundUser.getId());
+            contactInfo.put("name", foundUser.getUsername());
+            contactInfo.put("account", foundUser.getAccount());
+            contactInfo.put("phone", foundUser.getPhone());
+            contactInfo.put("avatarUrl", foundUser.getAvatarUrl());
+            contactInfo.put("status", "在线"); // 默认状态
+            
+            // 使用与客户端ServerResult对象一致的数据结构
+            result.put("retCode", 0); // 成功代码
+            result.put("errMsg", ""); // 空错误消息
+            result.put("data", contactInfo);
+        } else {
+            result.put("retCode", 404);
+            result.put("errMsg", "用户不存在");
             result.put("data", null);
         }
         return result;
@@ -204,10 +281,20 @@ public class ApiController implements WebMvcConfigurer {
         userMap.put(user.getId(), user);
         // 保存用户数据到文件
         saveUserData();
+        
+        // 创建与客户端ContactInfo对象匹配的数据结构
+        Map<String, Object> contactInfo = new HashMap<>();
+        contactInfo.put("id", user.getId());
+        contactInfo.put("name", user.getUsername());
+        contactInfo.put("account", user.getAccount());
+        contactInfo.put("phone", user.getPhone());
+        contactInfo.put("avatarUrl", user.getAvatarUrl());
+        contactInfo.put("status", "在线"); // 默认状态
+        
         Map<String, Object> result = new HashMap<>();
-        result.put("code", 200);
-        result.put("msg", "注册成功");
-        result.put("data", user);
+        result.put("retCode", 0); // 成功代码
+        result.put("errMsg", ""); // 空错误消息
+        result.put("data", contactInfo);
         return result;
     }
 
@@ -221,35 +308,130 @@ public class ApiController implements WebMvcConfigurer {
         for (User user : userMap.values()) {
             // 检查用户名和密码（兼容旧版本）
             if (username != null && user.getUsername().equals(username) && user.getPassword().equals(password)) {
+                // 创建与客户端ContactInfo对象匹配的数据结构
+                Map<String, Object> contactInfo = new HashMap<>();
+                contactInfo.put("id", user.getId());
+                contactInfo.put("name", user.getUsername());
+                contactInfo.put("account", user.getAccount());
+                contactInfo.put("phone", user.getPhone());
+                contactInfo.put("avatarUrl", user.getAvatarUrl());
+                contactInfo.put("status", "在线"); // 默认状态
+                
                 Map<String, Object> result = new HashMap<>();
-                result.put("code", 200);
-                result.put("msg", "登录成功");
-                result.put("data", user);
+                result.put("retCode", 0); // 成功代码
+                result.put("errMsg", ""); // 空错误消息
+                result.put("data", contactInfo);
                 return result;
             }
             // 检查账号和密码（新功能）
             if (account != null && user.getAccount().equals(account) && user.getPassword().equals(password)) {
+                // 创建与客户端ContactInfo对象匹配的数据结构
+                Map<String, Object> contactInfo = new HashMap<>();
+                contactInfo.put("id", user.getId());
+                contactInfo.put("name", user.getUsername());
+                contactInfo.put("account", user.getAccount());
+                contactInfo.put("phone", user.getPhone());
+                contactInfo.put("avatarUrl", user.getAvatarUrl());
+                contactInfo.put("status", "在线"); // 默认状态
+                
                 Map<String, Object> result = new HashMap<>();
-                result.put("code", 200);
-                result.put("msg", "登录成功");
-                result.put("data", user);
+                result.put("retCode", 0); // 成功代码
+                result.put("errMsg", ""); // 空错误消息
+                result.put("data", contactInfo);
                 return result;
             }
         }
         Map<String, Object> result = new HashMap<>();
-        result.put("code", 401);
-        result.put("msg", "账号或密码错误");
+        result.put("retCode", 401);
+        result.put("errMsg", "账号或密码错误");
+        result.put("data", null);
         return result;
     }
 
     // 3. 获取联系人接口 /apis/get_contacts
     @GetMapping("/get_contacts")
-    public Map<String, Object> getContacts(@RequestParam Long userId) {
+    public Map<String, Object> getContacts(@RequestParam(required = false) Long userId) {
+        // 如果没有提供userId，返回空列表
+        if (userId == null) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("retCode", 0);
+            result.put("errMsg", "");
+            result.put("data", new ArrayList<>());
+            return result;
+        }
+        
         List<Contact> contacts = contactMap.getOrDefault(userId, new ArrayList<>());
+        
+        // 转换为前端需要的ContactInfo格式
+        List<Map<String, Object>> contactInfoList = new ArrayList<>();
+        for (Contact contact : contacts) {
+            User contactUser = userMap.get(contact.getContactId());
+            if (contactUser != null) {
+                Map<String, Object> contactInfo = new HashMap<>();
+                contactInfo.put("id", contactUser.getId());
+                contactInfo.put("name", contact.getRemark() != null ? contact.getRemark() : contactUser.getUsername());
+                contactInfo.put("account", contactUser.getAccount());
+                contactInfo.put("phone", contactUser.getPhone());
+                contactInfo.put("avatarUrl", contactUser.getAvatarUrl());
+                contactInfo.put("status", "在线");
+                contactInfoList.add(contactInfo);
+            }
+        }
+        
         Map<String, Object> result = new HashMap<>();
-        result.put("code", 200);
-        result.put("msg", "获取成功");
-        result.put("data", contacts);
+        result.put("retCode", 0);
+        result.put("errMsg", "");
+        result.put("data", contactInfoList);
+        return result;
+    }
+
+    // 添加好友接口 /apis/add_friend
+    @PostMapping("/add_friend")
+    public Map<String, Object> addFriend(@RequestBody Map<String, Object> params) {
+        Long userId = Long.valueOf(params.get("userId").toString());
+        Long friendId = Long.valueOf(params.get("friendId").toString());
+        String remark = params.get("remark") != null ? params.get("remark").toString() : null;
+        
+        Map<String, Object> result = new HashMap<>();
+        
+        // 检查用户是否存在
+        if (!userMap.containsKey(userId) || !userMap.containsKey(friendId)) {
+            result.put("retCode", 404);
+            result.put("errMsg", "用户不存在");
+            return result;
+        }
+        
+        // 检查是否已经是好友
+        List<Contact> userContacts = contactMap.getOrDefault(userId, new ArrayList<>());
+        for (Contact contact : userContacts) {
+            if (contact.getContactId().equals(friendId)) {
+                result.put("retCode", 400);
+                result.put("errMsg", "已经是好友");
+                return result;
+            }
+        }
+        
+        // 添加好友关系（双向）
+        // 用户A添加用户B
+        Contact contact1 = new Contact(idGenerator.getAndIncrement(), userId, friendId, remark);
+        if (!contactMap.containsKey(userId)) {
+            contactMap.put(userId, new ArrayList<>());
+        }
+        contactMap.get(userId).add(contact1);
+        
+        // 用户B自动添加用户A
+        Contact contact2 = new Contact(idGenerator.getAndIncrement(), friendId, userId, null);
+        if (!contactMap.containsKey(friendId)) {
+            contactMap.put(friendId, new ArrayList<>());
+        }
+        contactMap.get(friendId).add(contact2);
+        
+        // 保存数据
+        saveUserData();
+        
+        result.put("retCode", 0);
+        result.put("errMsg", "");
+        result.put("data", "添加好友成功");
         return result;
     }
 
@@ -343,12 +525,15 @@ public class ApiController implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // 映射上传的头像文件
         String uploadPath = System.getProperty("user.dir") + "/uploads/";
+        System.out.println("上传路径: " + uploadPath);
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadPath);
         
         // 映射默认头像资源
         registry.addResourceHandler("/image/**")
                 .addResourceLocations("classpath:/static/image/");
+        
+        System.out.println("静态资源映射配置完成");
     }
     
     // 数据持久化方法
@@ -365,6 +550,19 @@ public class ApiController implements WebMvcConfigurer {
                     for (User user : users) {
                         userMap.put(user.getId(), user);
                     }
+                }
+                
+                // 恢复联系人关系数据
+                if (dataMap.containsKey("contacts")) {
+                    List<Contact> contacts = objectMapper.convertValue(dataMap.get("contacts"), new TypeReference<List<Contact>>() {});
+                    for (Contact contact : contacts) {
+                        Long userId = contact.getUserId();
+                        if (!contactMap.containsKey(userId)) {
+                            contactMap.put(userId, new ArrayList<>());
+                        }
+                        contactMap.get(userId).add(contact);
+                    }
+                    System.out.println("联系人数据加载成功，联系人关系数量: " + contacts.size());
                 }
                 
                 // 恢复ID生成器
@@ -393,12 +591,20 @@ public class ApiController implements WebMvcConfigurer {
             // 准备要保存的数据
             Map<String, Object> dataMap = new HashMap<>();
             dataMap.put("users", new ArrayList<>(userMap.values()));
+            
+            // 保存联系人关系数据
+            List<Contact> allContacts = new ArrayList<>();
+            for (List<Contact> contacts : contactMap.values()) {
+                allContacts.addAll(contacts);
+            }
+            dataMap.put("contacts", allContacts);
+            
             dataMap.put("lastId", idGenerator.get() - 1);
             
             // 保存到文件
             File dataFile = new File(DATA_FILE_PATH);
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(dataFile, dataMap);
-            System.out.println("数据保存成功，用户数量: " + userMap.size());
+            System.out.println("数据保存成功，用户数量: " + userMap.size() + ", 联系人关系数量: " + allContacts.size());
         } catch (Exception e) {
             System.err.println("数据保存失败: " + e.getMessage());
         }

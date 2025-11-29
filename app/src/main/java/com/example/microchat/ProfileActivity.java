@@ -32,7 +32,10 @@ public class ProfileActivity extends AppCompatActivity {
         ImageView profileAvatar = findViewById(R.id.profileAvatar);
         if (myInfo != null) {
             // 使用Glide加载头像
-            String imgURL = MainActivity.serverHostURL + myInfo.getAvatarUrl();
+            String avatarUrl = myInfo.getAvatarUrl();
+            // 处理头像URL路径，确保没有双斜杠
+            String cleanAvatarUrl = avatarUrl.startsWith("/") ? avatarUrl.substring(1) : avatarUrl;
+            String imgURL = MainActivity.serverHostURL + (MainActivity.serverHostURL.endsWith("/") ? "" : "/") + cleanAvatarUrl;
             Glide.with(this)
                     .load(imgURL)
                     .placeholder(R.drawable.contacts_normal)

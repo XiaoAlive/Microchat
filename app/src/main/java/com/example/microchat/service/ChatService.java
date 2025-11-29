@@ -39,7 +39,7 @@ public interface ChatService {
     
     // 获取联系人列表
     @GET("/apis/get_contacts")
-    Observable<ServerResult<List<ContactsPageListAdapter.ContactInfo>>> getContacts();
+    Observable<ServerResult<List<ContactsPageListAdapter.ContactInfo>>> getContacts(@Query("userId") Long userId);
     
     // 上传消息
     @POST("/apis/upload_message")
@@ -52,4 +52,13 @@ public interface ChatService {
     // 删除所有用户接口
     @DELETE("/apis/delete_all_users")
     Observable<ServerResult> deleteAllUsers();
+    
+    // 搜索用户接口
+    @GET("/apis/searchUser")
+    Observable<ServerResult<ContactsPageListAdapter.ContactInfo>> searchUser(@Query("keyword") String keyword);
+    
+    // 添加好友接口
+    @POST("/apis/add_friend")
+    Observable<ServerResult<String>> addFriend(@Body Map<String, Object> params);
+
 }

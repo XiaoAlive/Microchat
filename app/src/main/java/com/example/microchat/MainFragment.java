@@ -6,8 +6,10 @@ import android.animation.AnimatorSet;
 import android.content.res.Resources;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -96,6 +98,9 @@ public class MainFragment extends Fragment {
     
     // 定时器订阅
     private Disposable observableDisposable; //用于停止订阅的对象
+    
+    // 广播接收器
+    private BroadcastReceiver friendAddedReceiver;
 
     public MainFragment() {
         // Required empty public constructor
@@ -143,18 +148,37 @@ public class MainFragment extends Fragment {
     public void onStart() {
         super.onStart();
         
-        // 创建一个定时器Observable
-        Observable intervalObservable = Observable.interval(10, TimeUnit.SECONDS);
+        // 注册广播接收器
+        friendAddedReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("FRIEND_ADDED".equals(intent.getAction())) {
+                    // 好友添加成功，立即刷新联系人列表
+                    refreshContactsImmediately();
+                }
+            }
+        };
+        
+        IntentFilter filter = new IntentFilter("FRIEND_ADDED");
+        getActivity().registerReceiver(friendAddedReceiver, filter);
+        
+        // 创建一个定时器Observable，间隔改为30秒，减少频繁刷新
+        Observable intervalObservable = Observable.interval(30, TimeUnit.SECONDS);
         intervalObservable.retry().flatMap(v -> {
             // 向服务端发出获取联系人列表的请求
-            return chatService.getContacts().map(result -> {
-                // 转换服务端返回的数据，将真正的负载发给观察者
-                if (result != null && result.getRetCode() == 0) {
-                    return result.getData();
-                } else {
-                    throw new RuntimeException(result != null ? result.getErrMsg() : "未知错误");
-                }
-            });
+            if (MainActivity.myInfo != null) {
+                return chatService.getContacts((long) MainActivity.myInfo.getId()).map(result -> {
+                    // 转换服务端返回的数据，将真正的负载发给观察者
+                    if (result != null && result.getRetCode() == 0) {
+                        return result.getData();
+                    } else {
+                        throw new RuntimeException(result != null ? result.getErrMsg() : "未知错误");
+                    }
+                });
+            } else {
+                // 如果没有登录信息，返回空列表
+                return Observable.just(new ArrayList<ContactsPageListAdapter.ContactInfo>());
+            }
         }).retry().subscribeOn(Schedulers.computation())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Observer<List<ContactsPageListAdapter.ContactInfo>>() {
@@ -190,6 +214,12 @@ public class MainFragment extends Fragment {
     public void onStop() {
         super.onStop();
 
+        // 注销广播接收器
+        if (friendAddedReceiver != null) {
+            getActivity().unregisterReceiver(friendAddedReceiver);
+            friendAddedReceiver = null;
+        }
+
         // 停止RxJava定时器
         if (observableDisposable != null && !observableDisposable.isDisposed()) {
             observableDisposable.dispose();
@@ -197,11 +227,41 @@ public class MainFragment extends Fragment {
         }
     }
     
+    // 立即刷新联系人列表
+    private void refreshContactsImmediately() {
+        if (chatService != null && MainActivity.myInfo != null) {
+            chatService.getContacts((long) MainActivity.myInfo.getId())
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new Observer<ServerResult<List<ContactsPageListAdapter.ContactInfo>>>() {
+                        @Override
+                        public void onSubscribe(Disposable d) {}
+
+                        @Override
+                        public void onNext(ServerResult<List<ContactsPageListAdapter.ContactInfo>> result) {
+                            if (result != null && result.getRetCode() == 0) {
+                                // 更新联系人列表
+                                updateContactsList(result.getData());
+                                Toast.makeText(getContext(), "好友列表已更新", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+                            Log.e("MainFragment", "刷新联系人列表失败：" + e.getMessage(), e);
+                        }
+
+                        @Override
+                        public void onComplete() {}
+                    });
+        }
+    }
+    
     // 初始化Retrofit
     private void initRetrofit() {
         // 从SharedPreferences获取服务器地址
         String serverAddress = getActivity().getSharedPreferences("app_config", 0)
-                .getString("server_addr", "http://10.0.2.2:8081");
+                .getString("server_addr", "http://10.0.2.2:8080");
         
         retrofit = new Retrofit.Builder()
                 .baseUrl(serverAddress)
@@ -214,41 +274,85 @@ public class MainFragment extends Fragment {
     
     // 更新联系人列表
     private void updateContactsList(List<ContactsPageListAdapter.ContactInfo> contacts) {
+        android.util.Log.d("MainFragment", "更新联系人列表，数量: " + (contacts != null ? contacts.size() : 0));
+        
+        // 检查联系人列表是否真的发生了变化
+        boolean contactsChanged = false;
+        if (contacts == null && !cachedContacts.isEmpty()) {
+            contactsChanged = true;
+        } else if (contacts != null && contacts.size() != cachedContacts.size()) {
+            contactsChanged = true;
+        } else if (contacts != null) {
+            // 检查联系人内容是否变化
+            for (int i = 0; i < contacts.size(); i++) {
+                if (i >= cachedContacts.size() || 
+                    !contacts.get(i).getName().equals(cachedContacts.get(i).getName())) {
+                    contactsChanged = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!contactsChanged) {
+            android.util.Log.d("MainFragment", "联系人列表无变化，跳过更新");
+            return;
+        }
+        
         cachedContacts.clear();
         if (contacts != null) {
             cachedContacts.addAll(contacts);
         }
+        
+        // 重新构建树形结构
         rebuildContactsTree();
         
         if (contactsRecyclerView == null) {
+            android.util.Log.d("MainFragment", "contactsRecyclerView为空");
             return;
         }
         
+        // 根据当前选中的标签页显示对应的视图
         if (currentContactsTab == 0) {
+            android.util.Log.d("MainFragment", "显示分组视图");
             showGroupView();
         } else if (currentContactsTab == 1) {
+            android.util.Log.d("MainFragment", "显示好友视图");
             showFriendsView();
         }
     }
     
     private void rebuildContactsTree() {
+        android.util.Log.d("MainFragment", "重建联系人树，联系人数量: " + cachedContacts.size());
+        
         if (tree == null) {
-            return;
+            android.util.Log.d("MainFragment", "tree为空，创建新的ListTree");
+            tree = new ListTree();
         }
+        
         tree.clear();
+        
         if (cachedContacts.isEmpty()) {
+            android.util.Log.d("MainFragment", "联系人列表为空");
             return;
         }
+        
+        // 创建"我的好友"分组
         ContactsPageListAdapter.GroupInfo groupInfo =
                 new ContactsPageListAdapter.GroupInfo("我的好友", cachedContacts.size());
         ContactsPageListAdapter.GroupNode root =
                 new ContactsPageListAdapter.GroupNode(groupInfo, 0);
+        
+        // 将联系人添加到分组中
         for (ContactsPageListAdapter.ContactInfo contact : cachedContacts) {
             ContactsPageListAdapter.ContactNode contactNode =
                     new ContactsPageListAdapter.ContactNode(contact, 1);
             root.addChild(contactNode);
+            android.util.Log.d("MainFragment", "添加联系人到树: " + contact.getName());
         }
+        
+        // 将分组节点添加到树中
         tree.addRootNode(root);
+        android.util.Log.d("MainFragment", "树形结构构建完成，根节点子节点数: " + root.getChildrenCount());
     }
 
     @Override
@@ -393,7 +497,7 @@ public class MainFragment extends Fragment {
             
             // 确保服务器主机地址不为空
             if (serverHost == null || serverHost.isEmpty()) {
-                serverHost = "http://10.0.2.2:8081"; // 使用默认值
+                serverHost = "http://10.0.2.2:8080"; // 使用默认值
             }
             
             // 构建完整的头像URL，仅当avatarUrl不为空时才拼接
@@ -403,8 +507,9 @@ public class MainFragment extends Fragment {
                 if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
                     imgURL = avatarUrl;
                 } else {
-                    // 如果不是完整路径，则拼接服务器地址
-                    imgURL = serverHost + (serverHost.endsWith("/") ? "" : "/") + avatarUrl;
+                    // 如果不是完整路径，则拼接服务器地址，处理头像URL路径确保没有双斜杠
+                    String cleanAvatarUrl = avatarUrl.startsWith("/") ? avatarUrl.substring(1) : avatarUrl;
+                    imgURL = serverHost + (serverHost.endsWith("/") ? "" : "/") + cleanAvatarUrl;
                 }
             }
             
@@ -730,8 +835,8 @@ public class MainFragment extends Fragment {
         // 默认渲染分组视图
         showGroupView();
         
-        // 初始获取联系人数据
-        // fetchContactsFromServer()方法已集成到定时器逻辑中，这里不再需要单独调用
+        // 初始获取联系人数据 - 立即从服务器获取
+        fetchContactsFromServer();
         
         // 获取TabLayout并设置切换监听器
         TabLayout contactsTabLayout = v.findViewById(R.id.contactsTabLayout);
@@ -755,6 +860,35 @@ public class MainFragment extends Fragment {
         }
         
         return v;
+    }
+    
+    // 从服务器获取联系人数据
+    private void fetchContactsFromServer() {
+        if (chatService != null && MainActivity.myInfo != null) {
+            chatService.getContacts((long) MainActivity.myInfo.getId())
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new Observer<ServerResult<List<ContactsPageListAdapter.ContactInfo>>>() {
+                        @Override
+                        public void onSubscribe(Disposable d) {}
+
+                        @Override
+                        public void onNext(ServerResult<List<ContactsPageListAdapter.ContactInfo>> result) {
+                            if (result != null && result.getRetCode() == 0) {
+                                // 更新联系人列表
+                                updateContactsList(result.getData());
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+                            Log.e("MainFragment", "获取联系人失败：" + e.getMessage(), e);
+                        }
+
+                        @Override
+                        public void onComplete() {}
+                    });
+        }
     }
     
     // 处理Tab切换逻辑
@@ -788,8 +922,16 @@ public class MainFragment extends Fragment {
             return;
         }
         currentContactsTab = 0;
-        contactsAdapter = new ContactsPageListAdapter();
-        contactsAdapter.setShowSearchBox(false);
+        
+        // 如果适配器不存在，创建新的适配器
+        if (contactsAdapter == null) {
+            contactsAdapter = new ContactsPageListAdapter();
+            contactsAdapter.setShowSearchBox(false);
+            contactsRecyclerView.setAdapter(contactsAdapter);
+        }
+        
+        // 清空现有数据
+        contactsAdapter.clearAllNodes();
         
         ContactsPageListAdapter.GroupInfo group1 =
                 new ContactsPageListAdapter.GroupInfo("特别关心", 0);
@@ -802,8 +944,6 @@ public class MainFragment extends Fragment {
         for (ContactsPageListAdapter.ContactInfo contact : cachedContacts) {
             contactsAdapter.addContactToGroup(groupNode2, contact);
         }
-        
-        contactsRecyclerView.setAdapter(contactsAdapter);
     }
     
     // 显示好友视图 - 按首字母排序显示
@@ -812,8 +952,13 @@ public class MainFragment extends Fragment {
             return;
         }
         currentContactsTab = 1;
-        contactsAdapter = new ContactsPageListAdapter();
-        contactsAdapter.setShowSearchBox(false);
+        
+        // 如果适配器不存在，创建新的适配器
+        if (contactsAdapter == null) {
+            contactsAdapter = new ContactsPageListAdapter();
+            contactsAdapter.setShowSearchBox(false);
+            contactsRecyclerView.setAdapter(contactsAdapter);
+        }
         
         List<ContactsPageListAdapter.ContactNode> allContacts = new ArrayList<>();
         for (ContactsPageListAdapter.ContactInfo contact : cachedContacts) {
@@ -821,7 +966,6 @@ public class MainFragment extends Fragment {
         }
         
         contactsAdapter.generateAlphabetSortedContacts(allContacts);
-        contactsRecyclerView.setAdapter(contactsAdapter);
     }
     
     // 显示"持续更新中..."视图

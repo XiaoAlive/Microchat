@@ -263,7 +263,7 @@ public class ChatActivity extends AppCompatActivity {
     //获取服务器地址
     private String getServerAddress() {
         SharedPreferences sharedPreferences = getSharedPreferences("user_info", Context.MODE_PRIVATE);
-        String url = sharedPreferences.getString("server_address", "http://10.0.2.2:8081");
+        String url = sharedPreferences.getString("server_address", "http://10.0.2.2:8080");
         return url;
     }
     

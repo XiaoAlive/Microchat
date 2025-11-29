@@ -1,5 +1,5 @@
 {
-  "lastId" : 1,
+  "lastId" : 8,
   "users" : [ {
     "id" : 1,
     "username" : "test1",
@@ -7,6 +7,41 @@
     "phone" : "19977441001",
     "phoneEmail" : "19977441001",
     "avatarUrl" : "/uploads/head/1.png",
-    "account" : "8355984843"
+    "account" : "3439085156"
+  }, {
+    "id" : 2,
+    "username" : "test2",
+    "password" : "111",
+    "phone" : "19977441002",
+    "phoneEmail" : "19977441002",
+    "avatarUrl" : "/uploads/head/2.png",
+    "account" : "2448371931"
+  }, {
+    "id" : 3,
+    "username" : "test3",
+    "password" : "111",
+    "phone" : "19977441003",
+    "phoneEmail" : "19977441003",
+    "avatarUrl" : "/uploads/head/3.png",
+    "account" : "3837831441"
+  }, {
+    "id" : 4,
+    "username" : "test4",
+    "password" : "111",
+    "phone" : "19977441004",
+    "phoneEmail" : "19977441004",
+    "avatarUrl" : "/image/head/4.png",
+    "account" : "7115589959"
+  } ],
+  "contacts" : [ {
+    "id" : 7,
+    "userId" : 1,
+    "contactId" : 2,
+    "remark" : "test2"
+  }, {
+    "id" : 8,
+    "userId" : 2,
+    "contactId" : 1,
+    "remark" : null
   } ]
 }

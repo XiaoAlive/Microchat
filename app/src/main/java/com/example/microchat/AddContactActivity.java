@@ -1,5 +1,6 @@
 package com.example.microchat;
 
+import android.content.Intent;
 import android.view.ViewGroup;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
@@ -78,40 +79,10 @@ public class AddContactActivity extends AppCompatActivity {
             switchToGroupTab();
         });
 
-        // 搜索框事件
-        etSearch.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // 搜索逻辑
-                String keyword = s.toString().trim();
-                if (keyword.isEmpty()) {
-                    // 搜索框为空，显示原始数据
-                    groupAdapter.setData(groupList);
-                } else {
-                    // 根据关键词过滤数据
-                    List<GroupInfo> filteredList = new ArrayList<>();
-                    for (GroupInfo group : groupList) {
-                        if (group.getName().contains(keyword)) {
-                            filteredList.add(group);
-                        }
-                    }
-                    groupAdapter.setData(filteredList);
-                }
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-            }
-        });
-
-        // 设置搜索框的搜索按钮事件
-        etSearch.setOnEditorActionListener((v, actionId, event) -> {
-            // 处理搜索操作
-            return true;
+        // 搜索框点击事件 - 跳转到搜索页面
+        etSearch.setOnClickListener(v -> {
+            Intent intent = new Intent(AddContactActivity.this, SearchActivity.class);
+            startActivity(intent);
         });
     }
 

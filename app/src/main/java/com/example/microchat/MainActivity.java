@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity implements FragmentListener 
         
         // 首先从SharedPreferences获取serverHostURL
         SharedPreferences preferences = getSharedPreferences("qqapp", MODE_PRIVATE);
-        serverHostURL = preferences.getString("server_addr", "http://10.0.2.2:8081"); // 使用默认值防止为空
+        serverHostURL = preferences.getString("server_addr", "http://10.0.2.2:8080"); // 使用默认值防止为空
         
         // 强制创建数据库文件，确保Database Inspector可以查看
         try {
@@ -152,7 +152,7 @@ public class MainActivity extends AppCompatActivity implements FragmentListener 
         editText.setHint("地址格式为：http://{IP地址}:{端口号}");
         // 为不同环境提供默认值提示
         String defaultHint = "注意：\n" +
-                           "- 在模拟器上: http://10.0.2.2:8081\n" +
+                           "- 在模拟器上: http://10.0.2.2:8080\n" +
                            "- 在真实设备上: 使用服务器的实际IP地址\n" +
                            "  (确保手机和服务器在同一网络)";
         AlertDialog.Builder inputDialog = new AlertDialog.Builder(this);
