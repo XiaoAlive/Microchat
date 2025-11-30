@@ -440,28 +440,159 @@ public class ApiController implements WebMvcConfigurer {
     public Map<String, Object> uploadMessage(@RequestBody Message message) {
         message.setId(idGenerator.getAndIncrement());
         message.setSendTime(System.currentTimeMillis() + ""); // 模拟时间戳
+        message.setIsRead(false); // 新消息默认未读
         messageList.add(message);
+        
+        // 同步保存数据，确保在返回前完成持久化
+        persistData();
+        
+        // 创建消息Map，包含所有消息信息和发送者信息
+        Map<String, Object> msgMap = new HashMap<>();
+        // 使用String类型而不是Long类型，避免Jackson序列化时转换为浮点数
+        msgMap.put("id", message.getId().toString());
+        msgMap.put("senderId", message.getSenderId().toString());
+        msgMap.put("receiverId", message.getReceiverId().toString());
+        msgMap.put("content", message.getContent());
+        msgMap.put("sendTime", message.getSendTime());
+        msgMap.put("isRead", message.getIsRead());
+        
+        // 根据senderId获取发送者的用户名作为contactName
+        User sender = userMap.get(message.getSenderId());
+        if (sender != null) {
+            msgMap.put("contactName", sender.getUsername());
+        }
+        
         Map<String, Object> result = new HashMap<>();
-        result.put("code", 200);
-        result.put("msg", "上传成功");
-        result.put("data", message);
+        result.put("retCode", 0); // 修改返回格式，保持与客户端一致
+        result.put("errMsg", "");
+        result.put("data", msgMap);
         return result;
     }
 
     // 5. 获取消息接口 /apis/get_messages
     @GetMapping("/get_messages")
     public Map<String, Object> getMessages(@RequestParam Long senderId, @RequestParam Long receiverId) {
-        List<Message> resultMsg = new ArrayList<>();
+        List<Map<String, Object>> resultMsg = new ArrayList<>();
         for (Message msg : messageList) {
             if ((msg.getSenderId().equals(senderId) && msg.getReceiverId().equals(receiverId))
                     || (msg.getSenderId().equals(receiverId) && msg.getReceiverId().equals(senderId))) {
-                resultMsg.add(msg);
+                
+                // 创建消息Map，包含所有消息信息和发送者信息
+                Map<String, Object> msgMap = new HashMap<>();
+                // 使用String类型而不是Long类型，避免Jackson序列化时转换为浮点数
+                msgMap.put("id", msg.getId().toString());
+                msgMap.put("senderId", msg.getSenderId().toString());
+                msgMap.put("receiverId", msg.getReceiverId().toString());
+                msgMap.put("content", msg.getContent());
+                msgMap.put("sendTime", msg.getSendTime());
+                msgMap.put("isRead", msg.getIsRead());
+                
+                // 根据senderId获取发送者的用户名作为contactName
+                User sender = userMap.get(msg.getSenderId());
+                if (sender != null) {
+                    msgMap.put("contactName", sender.getUsername());
+                }
+                
+                // 添加时间戳字段，兼容客户端的时间字段
+                try {
+                    msgMap.put("time", Long.parseLong(msg.getSendTime()));
+                } catch (NumberFormatException e) {
+                    msgMap.put("time", System.currentTimeMillis());
+                }
+                
+                resultMsg.add(msgMap);
             }
         }
         Map<String, Object> result = new HashMap<>();
-        result.put("code", 200);
-        result.put("msg", "获取成功");
+        result.put("retCode", 0); // 修改返回格式，保持与客户端一致
+        result.put("errMsg", "");
         result.put("data", resultMsg);
+        return result;
+    }
+    
+    // 6. 获取用户的所有会话列表接口 /apis/get_conversations
+    @GetMapping("/get_conversations")
+    public Map<String, Object> getConversations(@RequestParam Long userId) {
+        // 用于存放所有与该用户有过消息记录的用户ID
+        Map<Long, Message> lastMessageMap = new HashMap<>();
+        Map<Long, Integer> unreadCountMap = new HashMap<>();
+        
+        // 遍历所有消息，找出所有与该用户有过消息记录的用户
+        for (Message msg : messageList) {
+            // 如果消息是发给当前用户的，或者是当前用户发的
+            if (msg.getReceiverId().equals(userId) || msg.getSenderId().equals(userId)) {
+                // 确定对方用户ID
+                Long otherUserId = msg.getReceiverId().equals(userId) ? msg.getSenderId() : msg.getReceiverId();
+                
+                // 更新最后一条消息（只保留最新的）
+                if (!lastMessageMap.containsKey(otherUserId) || 
+                    Long.parseLong(msg.getSendTime()) > Long.parseLong(lastMessageMap.get(otherUserId).getSendTime())) {
+                    lastMessageMap.put(otherUserId, msg);
+                }
+                
+                // 统计未读消息数量（只有发给当前用户且未读的消息）
+                if (msg.getReceiverId().equals(userId) && !msg.getIsRead()) {
+                    unreadCountMap.put(otherUserId, unreadCountMap.getOrDefault(otherUserId, 0) + 1);
+                }
+            }
+        }
+        
+        // 构建会话列表
+        List<Map<String, Object>> conversations = new ArrayList<>();
+        for (Map.Entry<Long, Message> entry : lastMessageMap.entrySet()) {
+            Long otherUserId = entry.getKey();
+            Message lastMessage = entry.getValue();
+            
+            // 获取对方用户信息
+            User otherUser = userMap.get(otherUserId);
+            if (otherUser != null) {
+                Map<String, Object> conversation = new HashMap<>();
+                conversation.put("id", otherUser.getId());
+                conversation.put("name", otherUser.getUsername());
+                conversation.put("avatarUrl", otherUser.getAvatarUrl());
+                conversation.put("lastMessage", lastMessage.getContent());
+                conversation.put("lastMessageTime", lastMessage.getSendTime());
+                conversation.put("unreadCount", unreadCountMap.getOrDefault(otherUserId, 0));
+                conversations.add(conversation);
+            }
+        }
+        
+        // 按最后消息时间排序（降序）
+        conversations.sort((a, b) -> {
+            long timeA = Long.parseLong((String) a.get("lastMessageTime"));
+            long timeB = Long.parseLong((String) b.get("lastMessageTime"));
+            return Long.compare(timeB, timeA);
+        });
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("retCode", 0);
+        result.put("errMsg", "");
+        result.put("data", conversations);
+        return result;
+    }
+    
+    // 7. 标记消息为已读接口 /apis/mark_messages_read
+    @PostMapping("/mark_messages_read")
+    public Map<String, Object> markMessagesAsRead(@RequestBody Map<String, Object> params) {
+        Long senderId = Long.valueOf(params.get("senderId").toString());
+        Long receiverId = Long.valueOf(params.get("receiverId").toString());
+        
+        int markedCount = 0;
+        for (Message msg : messageList) {
+            if (msg.getSenderId().equals(senderId) && msg.getReceiverId().equals(receiverId) && !msg.getIsRead()) {
+                msg.setIsRead(true);
+                markedCount++;
+            }
+        }
+        
+        if (markedCount > 0) {
+            saveUserData(); // 保存更新后的消息状态
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("retCode", 0);
+        result.put("errMsg", "");
+        result.put("data", "标记了 " + markedCount + " 条消息为已读");
         return result;
     }
     
@@ -552,26 +683,33 @@ public class ApiController implements WebMvcConfigurer {
                     }
                 }
                 
-                // 恢复联系人关系数据
-                if (dataMap.containsKey("contacts")) {
-                    List<Contact> contacts = objectMapper.convertValue(dataMap.get("contacts"), new TypeReference<List<Contact>>() {});
-                    for (Contact contact : contacts) {
-                        Long userId = contact.getUserId();
-                        if (!contactMap.containsKey(userId)) {
-                            contactMap.put(userId, new ArrayList<>());
-                        }
-                        contactMap.get(userId).add(contact);
+            // 恢复联系人关系数据
+            if (dataMap.containsKey("contacts")) {
+                List<Contact> contacts = objectMapper.convertValue(dataMap.get("contacts"), new TypeReference<List<Contact>>() {});
+                for (Contact contact : contacts) {
+                    Long userId = contact.getUserId();
+                    if (!contactMap.containsKey(userId)) {
+                        contactMap.put(userId, new ArrayList<>());
                     }
-                    System.out.println("联系人数据加载成功，联系人关系数量: " + contacts.size());
+                    contactMap.get(userId).add(contact);
                 }
-                
-                // 恢复ID生成器
-                if (dataMap.containsKey("lastId")) {
-                    long lastId = objectMapper.convertValue(dataMap.get("lastId"), Long.class);
-                    idGenerator.set(lastId + 1);
-                }
-                
-                System.out.println("数据加载成功，用户数量: " + userMap.size());
+                System.out.println("联系人数据加载成功，联系人关系数量: " + contacts.size());
+            }
+            
+            // 恢复消息数据
+            if (dataMap.containsKey("messages")) {
+                List<Message> messages = objectMapper.convertValue(dataMap.get("messages"), new TypeReference<List<Message>>() {});
+                messageList.addAll(messages);
+                System.out.println("消息数据加载成功，消息数量: " + messages.size());
+            }
+            
+            // 恢复ID生成器
+            if (dataMap.containsKey("lastId")) {
+                long lastId = objectMapper.convertValue(dataMap.get("lastId"), Long.class);
+                idGenerator.set(lastId + 1);
+            }
+            
+            System.out.println("数据加载成功，用户数量: " + userMap.size());
             } else {
                 System.out.println("数据文件不存在，将创建新数据文件");
             }
@@ -599,12 +737,15 @@ public class ApiController implements WebMvcConfigurer {
             }
             dataMap.put("contacts", allContacts);
             
+            // 保存消息数据
+            dataMap.put("messages", messageList);
+            
             dataMap.put("lastId", idGenerator.get() - 1);
             
             // 保存到文件
             File dataFile = new File(DATA_FILE_PATH);
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(dataFile, dataMap);
-            System.out.println("数据保存成功，用户数量: " + userMap.size() + ", 联系人关系数量: " + allContacts.size());
+            System.out.println("数据保存成功，用户数量: " + userMap.size() + ", 联系人关系数量: " + allContacts.size() + ", 消息数量: " + messageList.size());
         } catch (Exception e) {
             System.err.println("数据保存失败: " + e.getMessage());
         }

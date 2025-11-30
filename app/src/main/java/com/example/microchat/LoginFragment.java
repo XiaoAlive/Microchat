@@ -362,7 +362,7 @@ public class LoginFragment extends Fragment {
                         editor.putBoolean("is_logged_in", true);
                         editor.putString("username", contactInfo.getName());
                         editor.putString("status", contactInfo.getStatus());
-                        editor.putInt("userId", contactInfo.getId());
+                        editor.putLong("userId", contactInfo.getId());
                         editor.putString("phone", contactInfo.getPhone());
                         editor.putString("account", contactInfo.getAccount());
                         editor.putString("avatarUrl", contactInfo.getAvatarUrl());
@@ -504,7 +504,7 @@ public class LoginFragment extends Fragment {
                     // 持久化用户信息
                     editor.putString("username", contactInfo.getName());
                     editor.putString("status", contactInfo.getStatus());
-                    editor.putInt("userId", contactInfo.getId());
+                    editor.putLong("userId", contactInfo.getId());
                     // 保存头像URL信息 - 确保头像URL不为空时才保存
                     String avatarUrl = contactInfo.getAvatarUrl();
                     if (avatarUrl != null && !avatarUrl.isEmpty()) {

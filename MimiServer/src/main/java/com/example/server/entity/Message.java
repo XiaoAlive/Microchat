@@ -6,6 +6,7 @@ public class Message {
     private Long receiverId;
     private String content;
     private String sendTime;
+    private Boolean isRead; // 消息是否已读
 
     // 构造方法、getter、setter省略
 
@@ -17,6 +18,7 @@ public class Message {
         this.receiverId = receiverId;
         this.content = content;
         this.sendTime = sendTime;
+        this.isRead = false; // 默认未读
     }
 
     public Long getId() {
@@ -57,5 +59,13 @@ public class Message {
 
     public void setSendTime(String sendTime) {
         this.sendTime = sendTime;
+    }
+
+    public Boolean getIsRead() {
+        return isRead;
+    }
+
+    public void setIsRead(Boolean isRead) {
+        this.isRead = isRead;
     }
 }

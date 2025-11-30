@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements FragmentListener 
             // 恢复用户信息
             String username = preferences.getString("username", "");
             String status = preferences.getString("status", "");
-            int userId = preferences.getInt("userId", 0);
+            long userId = preferences.getLong("userId", 0);
             String avatarUrl = preferences.getString("avatarUrl", "");
             String phone = preferences.getString("phone", "");
             String account = preferences.getString("account", "");

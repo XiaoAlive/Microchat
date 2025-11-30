@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="512dp"
+    android:height="512dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- 背景圆 -->
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M256,256m-256,0a256,256 0,1 1,512 0a256,256 0,1 1,-512 0"/>
+    <!-- 聊天气泡 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.9"
+        android:pathData="M350,150c0,-27.6 -22.4,-50 -50,-50H150c-27.6,0 -50,22.4 -50,50v130c0,27.6 22.4,50 50,50h25l25,40l25,-40h75c27.6,0 50,-22.4 50,-50V150z"/>
+    <!-- 聊天气泡中的点 -->
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M175,190m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0"/>
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M256,190m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0"/>
+    <path
+        android:fillColor="#1E88E5"
+        android:pathData="M315,190m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0"/>
+</vector>

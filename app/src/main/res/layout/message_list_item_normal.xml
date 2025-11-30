@@ -23,6 +23,28 @@
                 app:srcCompat="@drawable/message_normal" />
     </androidx.cardview.widget.CardView>
 
+    <!-- 未读消息计数徽章，位于头像右上角 -->
+    <androidx.cardview.widget.CardView
+            android:id="@+id/cardViewBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="-20dp"
+            android:layout_marginStart="-20dp"
+            android:layout_marginTop="4dp"
+            app:cardBackgroundColor="@color/colorAccent"
+            app:cardCornerRadius="8dp">
+
+        <TextView
+                android:id="@+id/textViewBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:layout_marginStart="4dp"
+                android:text="0"
+                android:textColor="@android:color/white"
+                android:textStyle="bold" />
+    </androidx.cardview.widget.CardView>
+
     <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -65,26 +87,6 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent" />
 
-        <androidx.cardview.widget.CardView
-                android:id="@+id/cardViewBadge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="4dp"
-                android:layout_marginRight="8dp"
-                app:cardBackgroundColor="@color/colorAccent"
-                app:cardCornerRadius="8dp"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintRight_toRightOf="parent">
 
-            <TextView
-                    android:id="@+id/textViewBadge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="4dp"
-                    android:layout_marginStart="4dp"
-                    android:text="0"
-                    android:textColor="@android:color/white"
-                    android:textStyle="bold" />
-        </androidx.cardview.widget.CardView>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </LinearLayout>

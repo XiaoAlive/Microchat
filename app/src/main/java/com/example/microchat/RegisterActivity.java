@@ -314,7 +314,7 @@ public class RegisterActivity extends AppCompatActivity {
                             editor.putBoolean("is_logged_in", true);
                             editor.putString("username", contactInfo.getName());
                             editor.putString("status", contactInfo.getStatus());
-                            editor.putInt("userId", contactInfo.getId());
+                            editor.putLong("userId", contactInfo.getId());
                             editor.putString("avatarUrl", contactInfo.getAvatarUrl());
                             editor.putString("phone", contactInfo.getPhone());
                             editor.putString("account", contactInfo.getAccount());
@@ -416,7 +416,7 @@ public class RegisterActivity extends AppCompatActivity {
                         editor.putBoolean("is_logged_in", true);
                         editor.putString("username", contactInfo.getName());
                         editor.putString("status", contactInfo.getStatus());
-                        editor.putInt("userId", contactInfo.getId());
+                        editor.putLong("userId", contactInfo.getId());
                         editor.putString("avatarUrl", contactInfo.getAvatarUrl());
                         editor.putString("phone", contactInfo.getPhone());
                         editor.putString("account", contactInfo.getAccount());

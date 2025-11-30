@@ -15,7 +15,7 @@
             android:elevation="4dp"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
             app:layout_constraintTop_toTopOf="parent"
-            app:title="我要注册" />
+            app:title="注册" />
 
     <androidx.cardview.widget.CardView
             android:id="@+id/cardView"
@@ -78,7 +78,7 @@
             android:layout_marginTop="8dp"
             android:layout_marginEnd="8dp"
             android:ems="10"
-            android:hint="输入电话号码/邮箱"
+            android:hint="输入手机号"
             android:inputType="textEmailAddress"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

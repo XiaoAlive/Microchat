@@ -50,6 +50,7 @@ import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.converter.gson.GsonConverterFactory;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import android.util.Log;
 
@@ -98,9 +99,15 @@ public class MainFragment extends Fragment {
     
     // 定时器订阅
     private Disposable observableDisposable; //用于停止订阅的对象
+    private Disposable conversationDisposable; //会话列表获取的订阅对象
+    
+    // 消息页面的适配器和会话列表
+    private MessagePageListAdapter messageAdapter;
     
     // 广播接收器
     private BroadcastReceiver friendAddedReceiver;
+    private BroadcastReceiver messageSentReceiver;
+    private BroadcastReceiver newMessageReceiver;
 
     public MainFragment() {
         // Required empty public constructor
@@ -162,12 +169,40 @@ public class MainFragment extends Fragment {
         IntentFilter filter = new IntentFilter("FRIEND_ADDED");
         getActivity().registerReceiver(friendAddedReceiver, filter);
         
+        // 注册消息发送广播接收器
+        messageSentReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("MESSAGE_SENT".equals(intent.getAction())) {
+                    // 消息发送成功，立即刷新会话列表
+                    fetchConversations();
+                }
+            }
+        };
+        
+        IntentFilter messageFilter = new IntentFilter("MESSAGE_SENT");
+        getActivity().registerReceiver(messageSentReceiver, messageFilter);
+        
+        // 注册新消息接收广播
+        newMessageReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("NEW_MESSAGE_RECEIVED".equals(intent.getAction())) {
+                    // 接收到新消息，立即刷新会话列表
+                    fetchConversations();
+                }
+            }
+        };
+        
+        IntentFilter newMessageFilter = new IntentFilter("NEW_MESSAGE_RECEIVED");
+        getActivity().registerReceiver(newMessageReceiver, newMessageFilter);
+        
         // 创建一个定时器Observable，间隔改为30秒，减少频繁刷新
         Observable intervalObservable = Observable.interval(30, TimeUnit.SECONDS);
         intervalObservable.retry().flatMap(v -> {
             // 向服务端发出获取联系人列表的请求
             if (MainActivity.myInfo != null) {
-                return chatService.getContacts((long) MainActivity.myInfo.getId()).map(result -> {
+                return chatService.getContacts(MainActivity.myInfo.getId()).map(result -> {
                     // 转换服务端返回的数据，将真正的负载发给观察者
                     if (result != null && result.getRetCode() == 0) {
                         return result.getData();
@@ -219,18 +254,34 @@ public class MainFragment extends Fragment {
             getActivity().unregisterReceiver(friendAddedReceiver);
             friendAddedReceiver = null;
         }
+        
+        if (messageSentReceiver != null) {
+            getActivity().unregisterReceiver(messageSentReceiver);
+            messageSentReceiver = null;
+        }
+        
+        if (newMessageReceiver != null) {
+            getActivity().unregisterReceiver(newMessageReceiver);
+            newMessageReceiver = null;
+        }
 
         // 停止RxJava定时器
         if (observableDisposable != null && !observableDisposable.isDisposed()) {
             observableDisposable.dispose();
             observableDisposable = null;
         }
+        
+        // 停止会话列表订阅
+        if (conversationDisposable != null && !conversationDisposable.isDisposed()) {
+            conversationDisposable.dispose();
+            conversationDisposable = null;
+        }
     }
     
     // 立即刷新联系人列表
     private void refreshContactsImmediately() {
         if (chatService != null && MainActivity.myInfo != null) {
-            chatService.getContacts((long) MainActivity.myInfo.getId())
+            chatService.getContacts(MainActivity.myInfo.getId())
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(new Observer<ServerResult<List<ContactsPageListAdapter.ContactInfo>>>() {
@@ -259,17 +310,21 @@ public class MainFragment extends Fragment {
     
     // 初始化Retrofit
     private void initRetrofit() {
-        // 从SharedPreferences获取服务器地址
-        String serverAddress = getActivity().getSharedPreferences("app_config", 0)
-                .getString("server_addr", "http://10.0.2.2:8080");
+        // 使用MainActivity中设置的服务器地址，而不是硬编码的地址
+        // 这样真机和模拟器都能正确连接到服务器
+        if (getActivity() instanceof MainActivity) {
+            MainActivity activity = (MainActivity) getActivity();
+            // 首先检查是否已有Retrofit实例
+            retrofit = activity.getRetrofitVar();
+            if (retrofit == null) {
+                // 如果不存在，调用getRetrofit()创建实例（可能会弹出设置对话框）
+                retrofit = activity.getRetrofit();
+            }
+        }
         
-        retrofit = new Retrofit.Builder()
-                .baseUrl(serverAddress)
-                .addConverterFactory(GsonConverterFactory.create())
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .build();
-        
-        chatService = retrofit.create(ChatService.class);
+        if (retrofit != null) {
+            chatService = retrofit.create(ChatService.class);
+        }
     }
     
     // 更新联系人列表
@@ -376,7 +431,11 @@ public class MainFragment extends Fragment {
         //v3.setLayoutManager(new LinearLayoutManager(getContext()));
 
         //为RecyclerView设置Adapter
-        v1.setAdapter(new MessagePageListAdapter(getActivity()));
+        messageAdapter = new MessagePageListAdapter(getActivity());
+        v1.setAdapter(messageAdapter);
+        
+        // 获取会话列表
+        fetchConversations();
         //v3.setAdapter(new SpacePageListAdapter());
 
         // Inflate the layout for this fragment
@@ -776,7 +835,7 @@ public class MainFragment extends Fragment {
             public void run() {
                 try {
                     // 模拟网络请求耗时
-                    Thread.sleep(2000);
+                    Thread.sleep(1000);  // 减少延迟时间，提升用户体验
                     
                     // 在UI线程中停止刷新动画
                     getActivity().runOnUiThread(new Runnable() {
@@ -787,12 +846,13 @@ public class MainFragment extends Fragment {
                                 swipeRefreshLayout.setRefreshing(false);
                             }
                             
-                            // 如果当前是消息页面，可以刷新消息列表
+                            // 根据当前页面刷新相应数据
                             if (viewPager.getCurrentItem() == 0) {
-                                RecyclerView recyclerView = (RecyclerView) listViews[0];
-                                if (recyclerView != null && recyclerView.getAdapter() != null) {
-                                    recyclerView.getAdapter().notifyDataSetChanged();
-                                }
+                                // 消息页面：刷新会话列表
+                                fetchConversations();
+                            } else if (viewPager.getCurrentItem() == 1) {
+                                // 联系人页面：刷新联系人列表
+                                fetchContactsFromServer();
                             }
                         }
                     });
@@ -865,7 +925,7 @@ public class MainFragment extends Fragment {
     // 从服务器获取联系人数据
     private void fetchContactsFromServer() {
         if (chatService != null && MainActivity.myInfo != null) {
-            chatService.getContacts((long) MainActivity.myInfo.getId())
+            chatService.getContacts(MainActivity.myInfo.getId())
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(new Observer<ServerResult<List<ContactsPageListAdapter.ContactInfo>>>() {
@@ -887,6 +947,101 @@ public class MainFragment extends Fragment {
 
                         @Override
                         public void onComplete() {}
+                    });
+        }
+    }
+    
+    // 获取会话列表
+    private void fetchConversations() {
+        if (chatService != null && MainActivity.myInfo != null) {
+            long userId = MainActivity.myInfo.getId();
+            chatService.getConversations(userId)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new Observer<ServerResult<List<Map<String, Object>>>>() {
+                        @Override
+                        public void onSubscribe(Disposable d) {
+                            conversationDisposable = d;
+                        }
+
+                        @Override
+                        public void onNext(ServerResult<List<Map<String, Object>>> result) {
+                            if (result != null && result.getRetCode() == 0) {
+                                // 将Map转换为Conversation对象
+                                List<Conversation> conversations = new ArrayList<>();
+                                List<Map<String, Object>> data = result.getData();
+                                
+                                if (data != null) {
+                                    for (Map<String, Object> item : data) {
+                                        Conversation conversation = new Conversation();
+                                        
+                                        // 从Map中获取数据
+                                        Object id = item.get("id");
+                                        if (id != null) {
+                                            try {
+                                                // 先尝试转换为浮点数，再转为长整型，处理可能的"2.0"格式
+                                                conversation.setId(Double.valueOf(id.toString()).longValue());
+                                            } catch (NumberFormatException e) {
+                                                conversation.setId(0L);
+                                            }
+                                        }
+                                        
+                                        Object name = item.get("name");
+                                        if (name != null) {
+                                            conversation.setName(name.toString());
+                                        }
+                                        
+                                        Object avatarUrl = item.get("avatarUrl");
+                                        if (avatarUrl != null) {
+                                            conversation.setAvatarUrl(avatarUrl.toString());
+                                        }
+                                        
+                                        Object lastMessage = item.get("lastMessage");
+                                        if (lastMessage != null) {
+                                            conversation.setLastMessage(lastMessage.toString());
+                                        }
+                                        
+                                        Object lastMessageTime = item.get("lastMessageTime");
+                                        if (lastMessageTime != null) {
+                                            try {
+                                                // 先尝试转换为浮点数，再转为长整型，处理可能的"2.0"格式
+                                                conversation.setLastMessageTime(Double.valueOf(lastMessageTime.toString()).longValue());
+                                            } catch (NumberFormatException e) {
+                                                conversation.setLastMessageTime(System.currentTimeMillis());
+                                            }
+                                        }
+                                        
+                                        Object unreadCount = item.get("unreadCount");
+                                        if (unreadCount != null) {
+                                            try {
+                                                conversation.setUnreadCount(Integer.parseInt(unreadCount.toString()));
+                                            } catch (NumberFormatException e) {
+                                                conversation.setUnreadCount(0);
+                                            }
+                                        }
+                                        
+                                        conversations.add(conversation);
+                                    }
+                                }
+                                
+                                // 更新会话列表
+                                if (messageAdapter != null) {
+                                    messageAdapter.setConversations(conversations);
+                                }
+                            } else {
+                                Log.e("MainFragment", "获取会话列表失败：" + result.getErrMsg());
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+                            Log.e("MainFragment", "获取会话列表错误：" + e.getMessage(), e);
+                        }
+                        
+                        @Override
+                        public void onComplete() {
+                            // 不需要特殊处理
+                        }
                     });
         }
     }
@@ -923,12 +1078,10 @@ public class MainFragment extends Fragment {
         }
         currentContactsTab = 0;
         
-        // 如果适配器不存在，创建新的适配器
-        if (contactsAdapter == null) {
-            contactsAdapter = new ContactsPageListAdapter();
-            contactsAdapter.setShowSearchBox(false);
-            contactsRecyclerView.setAdapter(contactsAdapter);
-        }
+        // 重新创建适配器以确保正确显示
+        contactsAdapter = new ContactsPageListAdapter();
+        contactsAdapter.setShowSearchBox(false);
+        contactsRecyclerView.setAdapter(contactsAdapter);
         
         // 清空现有数据
         contactsAdapter.clearAllNodes();
@@ -953,12 +1106,10 @@ public class MainFragment extends Fragment {
         }
         currentContactsTab = 1;
         
-        // 如果适配器不存在，创建新的适配器
-        if (contactsAdapter == null) {
-            contactsAdapter = new ContactsPageListAdapter();
-            contactsAdapter.setShowSearchBox(false);
-            contactsRecyclerView.setAdapter(contactsAdapter);
-        }
+        // 重新创建适配器以确保正确显示
+        contactsAdapter = new ContactsPageListAdapter();
+        contactsAdapter.setShowSearchBox(false);
+        contactsRecyclerView.setAdapter(contactsAdapter);
         
         List<ContactsPageListAdapter.ContactNode> allContacts = new ArrayList<>();
         for (ContactsPageListAdapter.ContactInfo contact : cachedContacts) {
@@ -1004,8 +1155,7 @@ public class MainFragment extends Fragment {
             }
         };
         
-        // 清空RecyclerView并设置新的适配器
-        contactsRecyclerView.setAdapter(null);
+        // 直接设置临时适配器用于显示"持续更新中"，但保留原始contactsAdapter引用
         contactsRecyclerView.setAdapter(adapter);
     }
 

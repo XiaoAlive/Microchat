@@ -97,7 +97,7 @@ public class AddContactActivity extends AppCompatActivity {
         containerGroup.setVisibility(View.GONE);
         
         // 更新搜索框提示文本
-        etSearch.setHint("QQ号/QID/手机号/群");
+        etSearch.setHint("账号/手机号/群");
     }
 
     private void switchToGroupTab() {

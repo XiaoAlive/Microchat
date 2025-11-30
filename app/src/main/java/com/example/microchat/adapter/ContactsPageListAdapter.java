@@ -154,7 +154,7 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
     //实现Serializable接口是为了在Activity间传递
     public static class ContactInfo implements Serializable {
         //头像在服务器的路径
-        private int id;
+        private long id;
         @com.google.gson.annotations.SerializedName("name")
         private String name; //名字，从服务器的name字段映射
         private String status; //状态
@@ -166,18 +166,18 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
         public ContactInfo() {
         }
 
-        public ContactInfo(int id, String name, String status) {
+        public ContactInfo(long id, String name, String status) {
             this.id = id;
             this.name = name;
             this.status = status;
             this.avatarUrl = null; // 初始化为空，表示使用默认头像
         }
 
-        public int getId() {
+        public long getId() {
             return this.id;
         }
 
-        public void setId(int id) {
+        public void setId(long id) {
             this.id = id;
         }
 
@@ -700,8 +700,9 @@ public class ContactsPageListAdapter extends RecyclerView.Adapter<RecyclerView.V
                     if (node instanceof ContactNode) {
                         ContactNode contactNode = (ContactNode) node;
                         ContactInfo info = contactNode.getContactInfo();
-                        //将对方的名字作为参数传过去
+                        //将对方的名字和ID作为参数传过去
                         intent.putExtra("contact_name", info.getName());
+                        intent.putExtra("contact_id", info.getId());
                         itemView.getContext().startActivity(intent);
                     }
                 }

@@ -3,6 +3,7 @@ package com.example.microchat.service;
 import io.reactivex.Observable;
 import com.example.microchat.ServerResult;
 import com.example.microchat.Message;
+import com.example.microchat.Conversation;
 import com.example.microchat.adapter.ContactsPageListAdapter;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
@@ -47,7 +48,15 @@ public interface ChatService {
     
     // 获取消息
     @GET("/apis/get_messages")
-    Observable<ServerResult<List<Message>>> getMessagesFromIndex(@Query("from") int index);
+    Observable<ServerResult<List<Map<String, Object>>>> getMessages(@Query("senderId") Long senderId, @Query("receiverId") Long receiverId);
+    
+    // 获取会话列表
+    @GET("/apis/get_conversations")
+    Observable<ServerResult<List<Map<String, Object>>>> getConversations(@Query("userId") Long userId);
+    
+    // 标记消息为已读
+    @POST("/apis/mark_messages_read")
+    Observable<ServerResult<String>> markMessagesAsRead(@Body Map<String, Object> params);
     
     // 删除所有用户接口
     @DELETE("/apis/delete_all_users")
